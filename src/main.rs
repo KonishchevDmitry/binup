@@ -2,7 +2,9 @@
 
 mod cli;
 mod config;
-mod upgrade;
+mod download;
+mod github;
+mod install;
 
 use std::io::{self, Write};
 use std::path::Path;
@@ -32,10 +34,10 @@ fn main() {
 }
 
 fn run(config_path: &Path, action: Action) -> EmptyResult {
-    Config::load(config_path).map_err(|e| format!(
+    let config = Config::load(config_path).map_err(|e| format!(
         "Error while reading {:?} configuration file: {}", config_path, e))?;
 
     match action {
-        Action::Upgrade(tools) => crate::upgrade::upgrade(tools),
+        Action::Install {mode, tools} => crate::install::install(&config, mode, tools),
     }
 }
