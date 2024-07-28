@@ -5,6 +5,7 @@ use const_format::formatcp;
 use log::Level;
 
 use crate::core::GenericResult;
+use crate::install::Mode;
 
 pub struct CliArgs {
     pub log_level: Level,
@@ -13,7 +14,10 @@ pub struct CliArgs {
 }
 
 pub enum Action {
-    Upgrade(Option<Vec<String>>)
+    Install {
+        mode: Mode,
+        tools: Option<Vec<String>>,
+    }
 }
 
 pub fn parse_args() -> GenericResult<CliArgs> {
@@ -38,6 +42,10 @@ pub fn parse_args() -> GenericResult<CliArgs> {
             .action(ArgAction::Count)
             .help("Set verbosity level"))
 
+        .subcommand(Command::new("install")
+            .about("Install all or only specified tools")
+            .arg(Arg::new("NAME").help("Tool name").action(ArgAction::Append)))
+
         .subcommand(Command::new("upgrade")
             .about("Upgrade all or only specified tools")
             .arg(Arg::new("NAME").help("Tool name").action(ArgAction::Append)))
@@ -55,8 +63,19 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         PathBuf::from(shellexpand::tilde(DEFAULT_CONFIG_PATH).to_string()));
 
     let (command, matches) = matches.subcommand().unwrap();
+
     let action = match command {
-        "upgrade" => Action::Upgrade(matches.get_many::<String>("NAME").map(|tools| tools.cloned().collect())),
+        "install" | "upgrade" => {
+            let mode = match command {
+                "install" => Mode::Install,
+                "upgrade" => Mode::Upgrade,
+                _ => unreachable!(),
+            };
+
+            let tools = matches.get_many::<String>("NAME").map(|tools| tools.cloned().collect());
+
+            Action::Install {mode, tools}
+        }
         _ => unreachable!(),
     };
 
