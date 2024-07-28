@@ -5,11 +5,18 @@ use log::{debug, trace};
 use octocrab::{self, Error};
 use octocrab::models::repos::Release as ReleaseModel;
 use tokio::runtime::Runtime;
+use url::Url;
 
 use crate::core::GenericResult;
 
 pub struct Release {
+    pub tag: String,
+    pub assets: Vec<Asset>,
+}
 
+pub struct Asset {
+    pub name: String,
+    pub url: Url,
 }
 
 pub fn get_release(project: &str) -> GenericResult<Release> {
@@ -48,7 +55,16 @@ async fn get_release_async(project: &str) -> GenericResult<Release> {
 
     trace!("The latest {project} release:\n{release:#?}");
 
-    Ok(Release {})
+    Ok(Release {
+        tag: release.tag_name,
+        // FIXME(konishchev): published_at/created_at
+        assets: release.assets.into_iter().map(|asset| {
+            Asset {
+                name: asset.name,
+                url: asset.browser_download_url,
+            }
+        }).collect(),
+    })
 }
 
 fn parse_project_name(name: &str) -> GenericResult<(&str, &str)> {
