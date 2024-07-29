@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+jobs:
+  test:
+    name: Test
+    uses: KonishchevDmitry/binup/.github/workflows/test.yml@master
+
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          # See https://bit.ly/github-runners for actual runners
+          - os: ubuntu-20.04 # Oldest LTS
+          - os: macos-13     # Intel Mac
+          - os: macos-14     # ARM Mac
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build
+      env:
+        CARGO_TERM_COLOR: always
+      run: cargo build --release --locked
+
+    - name: Construct archive name
+      id: archive_name
+      uses: ASzc/change-string-case-action@v5
+      with:
+        string: ${{ format('binup-{0}-{1}-{2}.tar.bz2', runner.os, runner.arch, github.ref_name) }}
+
+    - name: Create archive
+      run: tar -cjf "${{ steps.archive_name.outputs.lowercase }}" -C target/release binup
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        path: ${{ steps.archive_name.outputs.lowercase }}
+        if-no-files-found: error
+        retention-days: 1
+
+  publish:
+    name: Publish
+
+    needs: [test, build]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Create release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: artifacts/*/*
+        file_glob: true

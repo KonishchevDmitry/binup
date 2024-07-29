@@ -15,11 +15,11 @@ env:
 jobs:
   test:
     name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ format('{0}-latest', matrix.os) }}
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-13, macos-14]
+        os: [ubuntu, macos]
 
     steps:
     - uses: actions/checkout@v3
