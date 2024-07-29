@@ -42,7 +42,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.runs-on }}
+        name: ${{ matrix.os }}
         path: ${{ steps.archive_name.outputs.lowercase }}
         if-no-files-found: error
         compression-level: 0
@@ -67,5 +67,5 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: artifacts/*/*
+        file: artifacts/*
         file_glob: true
