@@ -23,7 +23,7 @@ jobs:
           - os: macos-14     # ARM Mac
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Build
       env:
@@ -32,7 +32,7 @@ jobs:
 
     - name: Construct archive name
       id: archive_name
-      uses: ASzc/change-string-case-action@v5
+      uses: ASzc/change-string-case-action@v6
       with:
         string: ${{ format('binup-{0}-{1}-{2}.tar.bz2', runner.os, runner.arch, github.ref_name) }}
 
@@ -40,7 +40,7 @@ jobs:
       run: tar -cjf "${{ steps.archive_name.outputs.lowercase }}" -C target/release binup
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: ${{ steps.archive_name.outputs.lowercase }}
         if-no-files-found: error
@@ -54,7 +54,7 @@ jobs:
 
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
 
