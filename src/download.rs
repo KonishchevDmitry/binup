@@ -15,7 +15,7 @@ static USER_AGENT: &str = formatcp!(
 );
 
 pub trait Installer {
-    fn on_file(&mut self, path: &Path, data: &mut dyn Read) -> EmptyResult;
+    fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult;
 }
 
 pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyResult {
@@ -45,8 +45,8 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
 
         if matches!(entry_type, EntryType::Regular | EntryType::Continuous) {
             let path = path.to_path_buf();
-            let mode = header.mode();
-            installer.on_file(&path, &mut entry)?;
+            let mode = header.mode()?;
+            installer.on_file(&path, mode, &mut entry)?;
         }
     }
 
