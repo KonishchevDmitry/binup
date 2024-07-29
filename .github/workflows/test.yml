@@ -1,0 +1,34 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '0 19 * * 5'
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-13, macos-14]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Drop caches
+      run: rm Cargo.lock
+
+    - name: Build
+      run: cargo build
+
+    - name: Test
+      run: cargo test
