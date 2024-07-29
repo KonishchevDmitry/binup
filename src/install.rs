@@ -41,7 +41,7 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
     for (name, tool) in tools {
         let _logging_context = GlobalContext::new(name);
         let path = tool.path.as_ref().unwrap_or(&config.path);
-        install_tool(&name, tool, mode, path).map_err(|e| format!(
+        install_tool(name, tool, mode, path).map_err(|e| format!(
             "{name}: {e}"))?;
     }
 

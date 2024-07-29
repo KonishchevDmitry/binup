@@ -53,14 +53,16 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
     Ok(())
 }
 
+type DecoderBuilder = Box<dyn FnOnce(Box<dyn Read>) -> Box<dyn Read>>;
+
 struct ReleaseReaderBuilder {
-    decoder_builder: Box<dyn FnOnce(Box<dyn Read>) -> Box<dyn Read>>,
+    decoder_builder: DecoderBuilder,
 }
 
 impl ReleaseReaderBuilder {
     fn new(name: &str) -> GenericResult<ReleaseReaderBuilder> {
         let decoder_builder = name.rsplit_once('.').and_then(|(name, extension)| {
-            let decoder: Box<dyn FnOnce(Box<dyn Read>) -> Box<dyn Read>> = match extension {
+            let decoder: DecoderBuilder = match extension {
                 "bz2" => Box::new(|reader| Box::new(bzip2::read::BzDecoder::new(reader))),
                 "gz" => Box::new(|reader| Box::new(flate2::read::GzDecoder::new(reader))),
                 _ => return None,

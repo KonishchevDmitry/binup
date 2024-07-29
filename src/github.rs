@@ -32,7 +32,7 @@ async fn get_release_async(project: &str) -> GenericResult<Release> {
     debug!("Getting {project} release info...");
 
     let release = repository.releases().get_latest().await
-        .map(|release| Some(release))
+        .map(Some)
         .or_else(|err| -> GenericResult<Option<ReleaseModel>> {
             match err {
                 Error::GitHub {source, ..} if source.status_code == StatusCode::NOT_FOUND => Ok(None),

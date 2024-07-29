@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#
+# Checks code with clippy linter
+#
+
+set -eu
+
+for profile in dev release; do
+    cargo clippy --workspace --all-targets --all-features --no-deps --profile "$profile" -- -Dwarnings
+done
