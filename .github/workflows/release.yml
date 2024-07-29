@@ -42,8 +42,10 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
+        name: ${{ matrix.runs-on }}
         path: ${{ steps.archive_name.outputs.lowercase }}
         if-no-files-found: error
+        compression-level: 0
         retention-days: 1
 
   publish:
@@ -57,6 +59,8 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+        pattern: "*"
+        merge-multiple: true
 
     - name: Create release
       uses: svenstaro/upload-release-action@v2
