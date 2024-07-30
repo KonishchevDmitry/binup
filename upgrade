@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Upgrades all dependencies to the latest versions
+#
+
+set -eux
+
+command -v cargo-upgrade > /dev/null || cargo install cargo-edit
+cargo upgrade --pinned allow --incompatible allow
+cargo update
+
+cargo clean
