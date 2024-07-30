@@ -21,7 +21,7 @@ pub enum Action {
 }
 
 pub fn parse_args() -> GenericResult<CliArgs> {
-    const DEFAULT_CONFIG_PATH: &str = "~/.config/get-release/config.yaml";
+    const DEFAULT_CONFIG_PATH: &str = formatcp!("~/.config/{}/config.yaml", env!("CARGO_PKG_NAME"));
 
     let matches = Command::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
