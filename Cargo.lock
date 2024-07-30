@@ -171,6 +171,7 @@ name = "binup"
 version = "0.1.4"
 dependencies = [
  "bzip2",
+ "chrono",
  "clap",
  "const_format",
  "easy-logging",

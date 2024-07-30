@@ -87,10 +87,17 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
         }
     };
 
+    let release_time: SystemTime = asset.time.into();
+
     match mode {
         Mode::Install => info!("Installing {name}..."),
         Mode::Upgrade => {
-            // FIXME(konishchev): Check version
+            if let Some(ref current_state) = current_state {
+                if current_state.modify_time == release_time {
+                    info!("{name} is already up-to-date.");
+                    return Ok(());
+                }
+            }
             info!("Upgrading {name} to {release_version}...");
         },
     }
@@ -100,7 +107,7 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
         Some(ref glob) => Matcher::Glob(glob.clone()),
     };
 
-    let mut installer = Installer::new(binary_matcher, &install_path);
+    let mut installer = Installer::new(binary_matcher, &install_path, release_time);
 
     download::download(&asset.url, &asset.name, &mut installer).map_err(|e| format!(
         "Failed to download {}: {e}", asset.url))?;
@@ -119,15 +126,17 @@ struct Installer {
 
     temp_path: Option<PathBuf>,
     path: PathBuf,
+    time: SystemTime,
 }
 
 impl Installer {
-    fn new(matcher: Matcher, path: &Path) -> Installer {
+    fn new(matcher: Matcher, path: &Path, time: SystemTime) -> Installer {
         Installer {
             matcher,
             matches: Vec::new(),
             temp_path: None,
             path: path.to_owned(),
+            time,
         }
     }
 
@@ -198,6 +207,7 @@ impl download::Installer for Installer {
         self.temp_path.replace(temp_path);
 
         io::copy(data, &mut file)?;
+        file.set_modified(self.time)?;
         file.sync_all()?;
 
         Ok(())
@@ -205,7 +215,6 @@ impl download::Installer for Installer {
 }
 
 struct ToolState {
-    #[allow(dead_code)] // FIXME(konishchev): Support
     modify_time: SystemTime,
     // FIXME(konishchev): Version
 }

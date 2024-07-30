@@ -1,5 +1,6 @@
 use std::error::Error as _;
 
+use chrono::{DateTime, Utc};
 use http::StatusCode;
 use log::{debug, trace};
 use octocrab::{self, Error};
@@ -16,6 +17,7 @@ pub struct Release {
 
 pub struct Asset {
     pub name: String,
+    pub time: DateTime<Utc>,
     pub url: Url,
 }
 
@@ -57,10 +59,10 @@ async fn get_release_async(project: &str) -> GenericResult<Release> {
 
     Ok(Release {
         tag: release.tag_name,
-        // FIXME(konishchev): published_at/created_at
         assets: release.assets.into_iter().map(|asset| {
             Asset {
                 name: asset.name,
+                time: asset.updated_at,
                 url: asset.browser_download_url,
             }
         }).collect(),
