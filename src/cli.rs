@@ -44,7 +44,13 @@ pub fn parse_args() -> GenericResult<CliArgs> {
 
         .subcommand(Command::new("install")
             .about("Install all or only specified tools")
-            .arg(Arg::new("NAME").help("Tool name").action(ArgAction::Append)))
+            .args([
+                Arg::new("force").short('f').long("force")
+                    .help("Force installation even if tool is already installed")
+                    .action(ArgAction::SetTrue),
+
+                Arg::new("NAME").help("Tool name").action(ArgAction::Append),
+            ]))
 
         .subcommand(Command::new("upgrade")
             .about("Upgrade all or only specified tools")
@@ -67,7 +73,11 @@ pub fn parse_args() -> GenericResult<CliArgs> {
     let action = match command {
         "install" | "upgrade" => {
             let mode = match command {
-                "install" => Mode::Install,
+                "install" => if matches.get_flag("force") {
+                    Mode::ForceInstall
+                } else {
+                    Mode::Install
+                },
                 "upgrade" => Mode::Upgrade,
                 _ => unreachable!(),
             };

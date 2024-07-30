@@ -19,6 +19,7 @@ use crate::github;
 #[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
     Install,
+    ForceInstall,
     Upgrade,
 }
 
@@ -40,6 +41,11 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
 
     for (name, tool) in tools {
         let _logging_context = GlobalContext::new(name);
+
+        if names.is_none() {
+            info!("Checking {name}...");
+        }
+
         let path = tool.path.as_ref().unwrap_or(&config.path);
         install_tool(name, tool, mode, path).map_err(|e| format!(
             "{name}: {e}"))?;
@@ -91,6 +97,11 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
 
     match mode {
         Mode::Install => info!("Installing {name}..."),
+        Mode::ForceInstall => if current_state.is_none() {
+            info!("Installing {name}...");
+        } else {
+            info!("Reinstalling {name}...");
+        },
         Mode::Upgrade => {
             if let Some(ref current_state) = current_state {
                 if current_state.modify_time == release_time {
@@ -157,6 +168,8 @@ impl Installer {
         fs::rename(&temp_path, &self.path).map_err(|e| format!(
             "Unable to rename {temp_path:?} to {:?}: {e}", self.path))?;
 
+        debug!("The tool is installed as {:?}.", self.path);
+
         Ok(())
     }
 }
@@ -195,6 +208,8 @@ impl download::Installer for Installer {
             .and_then(|name| name.to_str())
             .ok_or_else(|| format!("Got an unexpected install path: {:?}", self.path))?;
         let temp_path = self.path.with_file_name(format!(".{file_name}.{ext}", ext=env!("CARGO_PKG_NAME")));
+
+        debug!("Downloading {path:?} to {temp_path:?}...");
 
         let mut file = OpenOptions::new()
             .create(true)
