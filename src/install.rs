@@ -15,6 +15,7 @@ use crate::config::{Config, Tool};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download;
 use crate::github;
+use crate::version;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
@@ -97,11 +98,16 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
 
     match mode {
         Mode::Install => info!("Installing {name}..."),
+
         Mode::ForceInstall => if current_state.is_none() {
             info!("Installing {name}...");
         } else {
-            info!("Reinstalling {name}...");
+            match version::get_binary_version(&install_path) {
+                Some(current_version) => info!("Reinstalling {name}: {current_version} -> {release_version}..."),
+                None => info!("Reinstalling {name}..."),
+            }
         },
+
         Mode::Upgrade => {
             if let Some(ref current_state) = current_state {
                 if current_state.modify_time == release_time {
@@ -109,7 +115,11 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
                     return Ok(());
                 }
             }
-            info!("Upgrading {name} to {release_version}...");
+
+            match current_state.as_ref().and_then(|_| version::get_binary_version(&install_path)) {
+                Some(current_version) => info!("Upgrading {name}: {current_version} -> {release_version}..."),
+                None => info!("Upgrading {name} to {release_version}..."),
+            }
         },
     }
 

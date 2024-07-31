@@ -24,6 +24,7 @@ octocrab = "0.38.0"
 libc = "0.2.155"
 log = "0.4.22"
 reqwest = { version = "0.12.5", features = ["blocking"] }
+semver = "1.0.23"
 serde = "1.0.204"
 serde_derive = "1.0.204"
 serde_yaml = "0.9.34"
@@ -32,3 +33,7 @@ tar = "0.4.41"
 tokio = "1"
 url = "2.5.2"
 validator = { version = "0.18.1", features = ["derive"] }
+
+[dev-dependencies]
+indoc = "2.0.5"
+rstest = "0.21.0"

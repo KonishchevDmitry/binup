@@ -5,6 +5,7 @@ mod config;
 mod download;
 mod github;
 mod install;
+mod version;
 
 use std::io::{self, Write};
 use std::path::Path;
