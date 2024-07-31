@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# Runs tests
+#
+
+set -eu
+
+cleanup() {
+    [ -z "$temp_dir" ] || rm -rf "$temp_dir"
+}
+
+cargo test
+
+temp_dir=""
+trap cleanup EXIT
+trap "exit 1" INT TERM QUIT
+temp_dir="$(mktemp -d "/var/tmp/binup-test.XXXXXX")"
+
+if [ "$(uname)" = Darwin ]; then
+    release_matcher='binup-macos-arm64-*'
+else
+    release_matcher='binup-linux-*'
+fi
+
+cat > "$temp_dir/config.yaml" <<EOF
+path: $temp_dir
+
+tools:
+  binup:
+    project: KonishchevDmitry/binup
+    release_matcher: $release_matcher
+EOF
+
+for command in install "install --force" upgrade; do
+    cargo run -- --config "$temp_dir/config.yaml" $command
+    "$temp_dir/binup" --help > /dev/null
+done
