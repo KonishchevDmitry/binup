@@ -3,7 +3,7 @@ use std::error::Error as _;
 use chrono::{DateTime, Utc};
 use http::StatusCode;
 use log::{debug, trace};
-use octocrab::{Octocrab, Error};
+use octocrab::{OctocrabBuilder, Error};
 use octocrab::models::repos::Release as ReleaseModel;
 use tokio::runtime::Runtime;
 use url::Url;
@@ -28,7 +28,13 @@ pub fn get_release(project: &str) -> GenericResult<Release> {
 async fn get_release_async(project: &str) -> GenericResult<Release> {
     let (owner, repository) = parse_project_name(project)?;
 
-    let github = Octocrab::default();
+    // FIXME(konishchev): Rewrite
+    let mut builder = OctocrabBuilder::new();
+    if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+        builder = builder.user_access_token(token);
+    }
+
+    let github = builder.build()?;
     let repository = github.repos(owner, repository);
 
     debug!("Getting {project} release info...");

@@ -22,13 +22,16 @@ else
     arch=linux-x64
 fi
 
-# FIXME(konishchev): Remove it
-env
 tool=binup
 project="KonishchevDmitry/$tool"
 release_matcher="$tool-$arch-*"
 
-curl -L "https://github.com/$project/releases/download/v0.4.0/$tool-$arch-v0.4.0.tar.bz2" \
+curl_args=()
+if [ -n "${GITHUB_TOKEN-}" ]; then
+    curl_args+=(--header "Authorization: Bearer $GITHUB_TOKEN")
+fi
+
+curl -L "${curl_args[@]}" "https://github.com/$project/releases/download/v0.4.0/$tool-$arch-v0.4.0.tar.bz2" \
     | tar -xjC "$temp_dir"
 mv "$temp_dir"/{$tool,old-release}
 
