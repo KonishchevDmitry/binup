@@ -1,8 +1,37 @@
+use std::fmt::{self, Display, Formatter};
 use std::path::Path;
 use std::process::Command;
 
 use log::debug;
 use semver::Version;
+
+pub enum ReleaseVersion {
+    Version(Version),
+    Tag(String)
+}
+
+impl ReleaseVersion {
+    pub fn new(tag: &str) -> ReleaseVersion {
+        let mut version = tag;
+        if version.starts_with('v') {
+            version = &version[1..];
+        }
+
+        match Version::parse(version) {
+            Ok(version) => ReleaseVersion::Version(version),
+            Err(_) => ReleaseVersion::Tag(tag.to_owned()),
+        }
+    }
+}
+
+impl Display for ReleaseVersion {
+    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
+        match self {
+            ReleaseVersion::Version(version) => version.fmt(formatter),
+            ReleaseVersion::Tag(tag) => tag.fmt(formatter),
+        }
+    }
+}
 
 pub fn get_binary_version(path: &Path) -> Option<Version> {
     let mut command = Command::new(path);

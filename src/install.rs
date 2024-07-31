@@ -9,13 +9,14 @@ use easy_logging::GlobalContext;
 use globset::GlobMatcher;
 use itertools::Itertools;
 use log::{debug, info, error};
+use semver::Version;
 use url::Url;
 
 use crate::config::{Config, Tool};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download;
 use crate::github;
-use crate::version;
+use crate::version::{self, ReleaseVersion};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
@@ -67,7 +68,7 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
 
     let release = github::get_release(&tool.project).map_err(|e| format!(
         "Failed to get latest release info for {project}: {e}"))?;
-    let release_version = &release.tag;
+    let release_version = ReleaseVersion::new(&release.tag);
 
     debug!("The latest release is {release_version}:");
     for asset in &release.assets {
@@ -103,7 +104,10 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
             info!("Installing {name}...");
         } else {
             match version::get_binary_version(&install_path) {
-                Some(current_version) => info!("Reinstalling {name}: {current_version} -> {release_version}..."),
+                Some(current_version) => info!(
+                    "Reinstalling {name}: {current_version} -> {release_version}{changelog}...",
+                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version)),
+
                 None => info!("Reinstalling {name}..."),
             }
         },
@@ -117,8 +121,13 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
             }
 
             match current_state.as_ref().and_then(|_| version::get_binary_version(&install_path)) {
-                Some(current_version) => info!("Upgrading {name}: {current_version} -> {release_version}..."),
-                None => info!("Upgrading {name} to {release_version}..."),
+                Some(current_version) => info!(
+                    "Upgrading {name}: {current_version} -> {release_version}{changelog}...",
+                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version)),
+
+                None => info!(
+                    "Upgrading {name} to {release_version}{changelog}...",
+                    changelog=format_changelog(tool.changelog.as_deref(), None, &release_version)),
             }
         },
     }
@@ -262,4 +271,16 @@ fn check_tool(path: &Path) -> GenericResult<Option<ToolState>> {
 
 fn format_list<T: Display, I: Iterator<Item = T>>(mut iter: I) -> String {
     "\n* ".to_owned() + &iter.join("\n* ")
+}
+
+fn format_changelog(changelog: Option<&str>, from: Option<&Version>, to: &ReleaseVersion) -> String {
+    let Some(changelog) = changelog else {
+        return String::new();
+    };
+
+    if matches!((from, to), (Some(from), ReleaseVersion::Version(to)) if from == to) {
+        return String::new();
+    }
+
+    format!(" (see {changelog})")
 }

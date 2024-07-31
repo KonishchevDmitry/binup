@@ -40,6 +40,8 @@ pub struct Tool {
     #[serde(default, deserialize_with = "deserialize_optional_glob")]
     pub binary_matcher: Option<GlobMatcher>,
 
+    pub changelog: Option<String>,
+
     #[serde(default, deserialize_with = "deserialize_optional_path")]
     pub path: Option<PathBuf>,
 }
