@@ -73,10 +73,8 @@ pub fn parse_args() -> GenericResult<CliArgs> {
     let action = match command {
         "install" | "upgrade" => {
             let mode = match command {
-                "install" => if matches.get_flag("force") {
-                    Mode::ForceInstall
-                } else {
-                    Mode::Install
+                "install" => Mode::Install {
+                    force: matches.get_flag("force"),
                 },
                 "upgrade" => Mode::Upgrade,
                 _ => unreachable!(),

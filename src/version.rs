@@ -5,6 +5,8 @@ use std::process::Command;
 use log::debug;
 use semver::Version;
 
+use crate::util;
+
 pub enum ReleaseVersion {
     Version(Version),
     Tag(String)
@@ -41,7 +43,8 @@ pub fn get_binary_version(path: &Path) -> Option<Version> {
 
     match command.output() {
         Ok(result) => if result.status.success() {
-            debug!("Got the following output:\n{}", String::from_utf8_lossy(&result.stdout).trim_end());
+            debug!("Got the following output:{}", util::format_multiline(&String::from_utf8_lossy(&result.stdout)));
+
             match String::from_utf8(result.stdout).ok().and_then(|stdout| parse_binary_version(&stdout)) {
                 Some(version) => {
                     debug!("Got the following version: {}.", version);
@@ -53,8 +56,9 @@ pub fn get_binary_version(path: &Path) -> Option<Version> {
                 },
             }
         } else {
-            debug!("The program returned an error ({}):\n{}",
-            result.status, String::from_utf8_lossy(&result.stderr).trim_end());
+            debug!(
+                "The program returned an error ({}):{}", result.status,
+                util::format_multiline(&String::from_utf8_lossy(&result.stderr)));
             None
         },
         Err(err) => {

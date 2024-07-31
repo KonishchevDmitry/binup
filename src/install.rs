@@ -3,6 +3,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, ErrorKind, Read};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::SystemTime;
 
 use easy_logging::GlobalContext;
@@ -16,12 +17,12 @@ use crate::config::{Config, Tool};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download;
 use crate::github;
+use crate::util;
 use crate::version::{self, ReleaseVersion};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 pub enum Mode {
-    Install,
-    ForceInstall,
+    Install {force: bool},
     Upgrade,
 }
 
@@ -45,6 +46,7 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
         let _logging_context = GlobalContext::new(name);
 
         if names.is_none() {
+            // FIXME(konishchev): Humanize logging
             info!("Checking {name}...");
         }
 
@@ -56,14 +58,20 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
     Ok(())
 }
 
-fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult {
+fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path) -> EmptyResult {
     let project = &tool.project;
     let install_path = path.join(name);
-
     let current_state = check_tool(&install_path)?;
-    if current_state.is_some() && mode == Mode::Install {
-        info!("{name} is already installed.");
-        return Ok(());
+
+    match (mode, current_state.is_some()) {
+        (Mode::Install{force: false}, true) => {
+            info!("{name} is already installed.");
+            return Ok(());
+        },
+        (Mode::Upgrade, false) => {
+            mode = Mode::Install{force: false};
+        }
+        _ => {},
     }
 
     let release = github::get_release(&tool.project).map_err(|e| format!(
@@ -98,15 +106,14 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
     let release_time: SystemTime = asset.time.into();
 
     match mode {
-        Mode::Install => info!("Installing {name}..."),
-
-        Mode::ForceInstall => if current_state.is_none() {
+        Mode::Install {force: _} => if current_state.is_none() {
             info!("Installing {name}...");
         } else {
             match version::get_binary_version(&install_path) {
                 Some(current_version) => info!(
                     "Reinstalling {name}: {current_version} -> {release_version}{changelog}...",
-                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version)),
+                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version),
+                ),
 
                 None => info!("Reinstalling {name}..."),
             }
@@ -123,11 +130,13 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
             match current_state.as_ref().and_then(|_| version::get_binary_version(&install_path)) {
                 Some(current_version) => info!(
                     "Upgrading {name}: {current_version} -> {release_version}{changelog}...",
-                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version)),
+                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version),
+                ),
 
                 None => info!(
                     "Upgrading {name} to {release_version}{changelog}...",
-                    changelog=format_changelog(tool.changelog.as_deref(), None, &release_version)),
+                    changelog=format_changelog(tool.changelog.as_deref(), None, &release_version),
+                ),
             }
         },
     }
@@ -142,7 +151,13 @@ fn install_tool(name: &str, tool: &Tool, mode: Mode, path: &Path) -> EmptyResult
     download::download(&asset.url, &asset.name, &mut installer).map_err(|e| format!(
         "Failed to download {}: {e}", asset.url))?;
 
-    installer.finish(&asset.url)
+    installer.finish(&asset.url)?;
+
+    if let Some(script) = tool.post.as_ref() {
+        run_post_script(script)?;
+    }
+
+    Ok(())
 }
 
 enum Matcher {
@@ -267,6 +282,28 @@ fn check_tool(path: &Path) -> GenericResult<Option<ToolState>> {
     };
 
     Ok(Some(ToolState {modify_time}))
+}
+
+fn run_post_script(script: &str) -> EmptyResult {
+    debug!("Executing post-install script:{}", util::format_multiline(script));
+
+    let result = Command::new("bash").args(["-c", script]).output().map_err(|e| format!(
+        "Failed to execute post-install script: unable to spawn bash process: {e}"))?;
+
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    if !result.status.success() {
+        return Err!(
+            "Post-install script returned an error ({}):{}",
+            result.status, util::format_multiline(&stderr));
+    }
+
+    if stderr.trim().is_empty() {
+        debug!("Post-install script has finished.");
+    } else {
+        debug!("Post-install script has finished:{}", util::format_multiline(&stderr));
+    }
+
+    Ok(())
 }
 
 fn format_list<T: Display, I: Iterator<Item = T>>(mut iter: I) -> String {

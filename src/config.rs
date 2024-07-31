@@ -44,6 +44,8 @@ pub struct Tool {
 
     #[serde(default, deserialize_with = "deserialize_optional_path")]
     pub path: Option<PathBuf>,
+
+    pub post: Option<String>,
 }
 
 fn default_install_path() -> PathBuf {

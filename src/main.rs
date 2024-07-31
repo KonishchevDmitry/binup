@@ -5,6 +5,7 @@ mod config;
 mod download;
 mod github;
 mod install;
+mod util;
 mod version;
 
 use std::io::{self, Write};
