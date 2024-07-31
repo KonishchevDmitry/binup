@@ -17,21 +17,55 @@ trap "exit 1" INT TERM QUIT
 temp_dir="$(mktemp -d "/var/tmp/binup-test.XXXXXX")"
 
 if [ "$(uname)" = Darwin ]; then
-    release_matcher='binup-macos-arm64-*'
+    arch=macos-arm64
 else
-    release_matcher='binup-linux-*'
+    arch=linux-x64
 fi
+
+# FIXME(konishchev): Remove it
+env
+tool=binup
+project="KonishchevDmitry/$tool"
+release_matcher="$tool-$arch-*"
+
+curl -L "https://github.com/$project/releases/download/v0.4.0/$tool-$arch-v0.4.0.tar.bz2" \
+    | tar -xjC "$temp_dir"
+mv "$temp_dir"/{$tool,old-release}
 
 cat > "$temp_dir/config.yaml" <<EOF
 path: $temp_dir
 
 tools:
-  binup:
-    project: KonishchevDmitry/binup
+  $tool:
+    project: $project
     release_matcher: $release_matcher
+
+  all-settings-test:
+    project: $project
+    release_matcher: $release_matcher
+    binary_matcher: $tool
+    changelog: https://github.com/$project/releases
+    path: $temp_dir/custom
+    post: touch $temp_dir/custom/post-install-marker
 EOF
+
+mkdir "$temp_dir/custom"
 
 for command in install "install --force" upgrade; do
     cargo run -- --config "$temp_dir/config.yaml" $command
-    "$temp_dir/binup" --help > /dev/null
+
+    (
+        cd "$temp_dir"
+
+        if [ "$command" = install ]; then
+            ./binup --help > /dev/null
+            ./custom/all-settings-test --help > /dev/null
+            sha256sum binup custom/all-settings-test > checksums
+        else
+            sha256sum -c checksums > /dev/null
+        fi
+
+        cp -a old-release custom/all-settings-test
+        rm custom/post-install-marker
+    )
 done
