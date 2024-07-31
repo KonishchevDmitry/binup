@@ -63,9 +63,9 @@ for command in install "install --force" upgrade; do
         if [ "$command" = install ]; then
             ./binup --help > /dev/null
             ./custom/all-settings-test --help > /dev/null
-            sha256sum binup custom/all-settings-test > checksums
+            shasum binup custom/all-settings-test > checksums
         else
-            sha256sum -c checksums > /dev/null
+            shasum -c checksums > /dev/null
         fi
 
         cp -a old-release custom/all-settings-test
