@@ -104,12 +104,14 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path) -> EmptyRe
     };
 
     let release_time: SystemTime = asset.time.into();
+    let current_version = current_state.as_ref().and_then(|_|
+        version::get_binary_version(&install_path));
 
     match mode {
         Mode::Install {force: _} => if current_state.is_none() {
             info!("Installing {name}...");
         } else {
-            match version::get_binary_version(&install_path) {
+            match current_version {
                 Some(current_version) => info!(
                     "Reinstalling {name}: {current_version} -> {release_version}{changelog}...",
                     changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version),
@@ -120,14 +122,16 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path) -> EmptyRe
         },
 
         Mode::Upgrade => {
-            if let Some(ref current_state) = current_state {
-                if current_state.modify_time == release_time {
-                    info!("{name} is already up-to-date.");
-                    return Ok(());
-                }
+            if match (current_state.as_ref(), current_version.as_ref(), &release_version) {
+                (_, Some(current_version), ReleaseVersion::Version(lastest_version)) => current_version >= lastest_version,
+                (Some(current_state), _, _) if current_state.modify_time == release_time => true,
+                _ => false,
+            } {
+                info!("{name} is already up-to-date.");
+                return Ok(());
             }
 
-            match current_state.as_ref().and_then(|_| version::get_binary_version(&install_path)) {
+            match current_version {
                 Some(current_version) => info!(
                     "Upgrading {name}: {current_version} -> {release_version}{changelog}...",
                     changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version),

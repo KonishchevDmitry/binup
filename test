@@ -16,60 +16,84 @@ trap cleanup EXIT
 trap "exit 1" INT TERM QUIT
 temp_dir="$(mktemp -d "/var/tmp/binup-test.XXXXXX")"
 
-if [ "$(uname)" = Darwin ]; then
-    arch=macos-arm64
-else
-    arch=linux-x64
-fi
-
 tool=binup
 project="KonishchevDmitry/$tool"
-release_matcher="$tool-$arch-*"
 
-curl_args=()
-if [ -n "${GITHUB_TOKEN-}" ]; then
-    curl_args+=(--header "Authorization: Bearer $GITHUB_TOKEN")
+if [ "$(uname)" = Darwin ]; then
+    release_matcher="$tool-macos-arm64-*"
+else
+    release_matcher="$tool-linux-*"
 fi
 
-# FIXME(konishchev): Rewrite to mock of oldest/newest release
-curl -L "${curl_args[@]}" "https://github.com/$project/releases/download/v0.4.0/$tool-$arch-v0.4.0.tar.bz2" \
-    | tar -xjC "$temp_dir"
-mv "$temp_dir"/{$tool,old-release}
+(
+    cd "$temp_dir"
+    mkdir bin custom-bin
 
-cat > "$temp_dir/config.yaml" <<EOF
-path: $temp_dir
+    cat > old-release-mock <<EOF
+#!/bin/bash
+echo "$tool 0.1.0"
+EOF
+
+    cat > new-release-mock <<EOF
+#!/bin/bash
+echo "$tool 100.0.0"
+EOF
+
+    chmod a+x old-release-mock new-release-mock
+    touch --no-create --date 2024-07-29 old-release-mock
+
+    cat > "config.yaml" <<EOF
+path: $temp_dir/bin
 
 tools:
   $tool:
     project: $project
     release_matcher: $release_matcher
 
-  all-settings-test:
+  up-to-date:
+    project: $project
+    release_matcher: $release_matcher
+    binary_matcher: $tool
+
+  upgradable:
     project: $project
     release_matcher: $release_matcher
     binary_matcher: $tool
     changelog: https://github.com/$project/releases
-    path: $temp_dir/custom
-    post: touch $temp_dir/custom/post-install-marker
+    path: $temp_dir/custom-bin
+    post: touch $temp_dir/post-install-marker
 EOF
-
-mkdir "$temp_dir/custom"
+)
 
 for command in install "install --force" upgrade; do
+    cp -a "$temp_dir/new-release-mock" "$temp_dir/bin/up-to-date"
+    cp -a "$temp_dir/old-release-mock" "$temp_dir/custom-bin/upgradable"
+
     cargo run -- --config "$temp_dir/config.yaml" $command
 
     (
         cd "$temp_dir"
 
-        if [ "$command" = install ]; then
-            ./binup --help > /dev/null
-            ./custom/all-settings-test --help > /dev/null
-            shasum binup custom/all-settings-test > checksums
+        "bin/$tool" --help > /dev/null
+
+        if [ "$command" = "install --force" ]; then
+            cmp bin/up-to-date "bin/$tool"
         else
-            shasum -c checksums > /dev/null
+            cmp bin/up-to-date new-release-mock
         fi
 
-        cp -a old-release custom/all-settings-test
-        rm custom/post-install-marker
+        if [ "$command" = install ]; then
+            shasum "bin/$tool" > checksum
+
+            cmp custom-bin/upgradable old-release-mock
+            if [ -e post-install-marker ]; then
+                echo "An unexpected call of post-install script." >&2
+                exit 1
+            fi
+        else
+            shasum -c checksum > /dev/null
+            cmp custom-bin/upgradable "bin/$tool"
+            rm post-install-marker
+        fi
     )
 done
