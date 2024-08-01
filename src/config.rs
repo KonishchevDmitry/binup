@@ -8,6 +8,7 @@ use serde::de::{Deserializer, Error};
 use validator::Validate;
 
 use crate::core::GenericResult;
+use crate::github::GithubConfig;
 
 #[derive(Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
@@ -18,6 +19,9 @@ pub struct Config {
 
     #[validate(nested)]
     pub tools: BTreeMap<String, Tool>,
+
+    #[serde(default)]
+    pub github: GithubConfig,
 }
 
 impl Config {

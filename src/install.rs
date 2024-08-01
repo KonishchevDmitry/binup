@@ -16,7 +16,7 @@ use url::Url;
 use crate::config::{Config, Tool};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download;
-use crate::github;
+use crate::github::{self, GithubConfig};
 use crate::util;
 use crate::version::{self, ReleaseVersion};
 
@@ -51,14 +51,14 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
         }
 
         let path = tool.path.as_ref().unwrap_or(&config.path);
-        install_tool(name, tool, mode, path).map_err(|e| format!(
+        install_tool(name, tool, mode, path, &config.github).map_err(|e| format!(
             "{name}: {e}"))?;
     }
 
     Ok(())
 }
 
-fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path) -> EmptyResult {
+fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_config: &GithubConfig) -> EmptyResult {
     let project = &tool.project;
     let install_path = path.join(name);
     let current_state = check_tool(&install_path)?;
@@ -74,7 +74,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path) -> EmptyRe
         _ => {},
     }
 
-    let release = github::get_release(&tool.project).map_err(|e| format!(
+    let release = github::get_release(github_config, &tool.project).map_err(|e| format!(
         "Failed to get latest release info for {project}: {e}"))?;
     let release_version = ReleaseVersion::new(&release.tag);
 

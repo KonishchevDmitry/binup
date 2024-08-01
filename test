@@ -25,6 +25,11 @@ else
     release_matcher="$tool-linux-*"
 fi
 
+github_config=""
+if [ -n "${GITHUB_TOKEN-}" ]; then
+    github_config="github: {token: $GITHUB_TOKEN}"
+fi
+
 (
     cd "$temp_dir"
     mkdir bin custom-bin
@@ -62,6 +67,8 @@ tools:
     changelog: https://github.com/$project/releases
     path: $temp_dir/custom-bin
     post: touch $temp_dir/post-install-marker
+
+$github_config
 EOF
 )
 

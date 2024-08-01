@@ -1,4 +1,3 @@
-use std::env::{self, VarError};
 use std::error::Error as _;
 
 use chrono::{DateTime, Utc};
@@ -6,10 +5,17 @@ use http::StatusCode;
 use log::{debug, trace};
 use octocrab::{OctocrabBuilder, Error};
 use octocrab::models::repos::Release as ReleaseModel;
+use serde::Deserialize;
 use tokio::runtime::Runtime;
 use url::Url;
 
 use crate::core::GenericResult;
+
+#[derive(Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GithubConfig {
+    token: Option<String>,
+}
 
 pub struct Release {
     pub tag: String,
@@ -22,16 +28,16 @@ pub struct Asset {
     pub url: Url,
 }
 
-pub fn get_release(project: &str) -> GenericResult<Release> {
-    create_runtime()?.block_on(get_release_async(project))
+pub fn get_release(config: &GithubConfig, project: &str) -> GenericResult<Release> {
+    create_runtime()?.block_on(get_release_async(config, project))
 }
 
-async fn get_release_async(project: &str) -> GenericResult<Release> {
+async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResult<Release> {
     let (owner, repository) = parse_project_name(project)?;
 
     let mut builder = OctocrabBuilder::new();
-    if let Some(token) = get_token()? {
-        builder = builder.user_access_token(token);
+    if let Some(token) = config.token.as_ref() {
+        builder = builder.user_access_token(token.to_owned());
     }
 
     let github = builder.build()?;
@@ -93,19 +99,6 @@ fn parse_project_name(name: &str) -> GenericResult<(&str, &str)> {
 fn create_runtime() -> GenericResult<Runtime> {
     Ok(tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e| format!(
         "Failed to create tokio runtime: {e}"))?)
-}
-
-fn get_token() -> GenericResult<Option<String>> {
-    const VAR_NAME: &str = "GITHUB_TOKEN";
-
-    Ok(match env::var(VAR_NAME) {
-        Ok(token) => {
-            debug!("Using GitHub token from {VAR_NAME} environment variable.");
-            Some(token)
-        },
-        Err(VarError::NotPresent) => None,
-        Err(err) => return Err!("{VAR_NAME} environment variable has an invalid value: {err}"),
-    })
 }
 
 // octocrab errors are very human-unfriendly
