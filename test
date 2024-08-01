@@ -31,6 +31,7 @@ if [ -n "${GITHUB_TOKEN-}" ]; then
     curl_args+=(--header "Authorization: Bearer $GITHUB_TOKEN")
 fi
 
+# FIXME(konishchev): Rewrite to mock of oldest/newest release
 curl -L "${curl_args[@]}" "https://github.com/$project/releases/download/v0.4.0/$tool-$arch-v0.4.0.tar.bz2" \
     | tar -xjC "$temp_dir"
 mv "$temp_dir"/{$tool,old-release}
