@@ -70,15 +70,16 @@ pub fn get_binary_version(path: &Path) -> Option<Version> {
 
 fn parse_binary_version(stdout: &str) -> Option<Version> {
     for word in stdout.split('\n').next().unwrap().split(' ') {
-        if let Ok(version) = Version::parse(word) {
-            return Some(version);
+        for token in word.split('-') {
+            let token = token.strip_prefix("v").unwrap_or(token);
+            if let Ok(version) = Version::parse(token) {
+                return Some(version);
+            }
         }
     }
     None
 }
 
-// FIXME(konishchev): vmctl version vmctl-20240425-145537-tags-v1.101.0-0-g5334f0c2c
-// FIXME(konishchev): victoria-metrics-20240425-145433-tags-v1.101.0-0-g5334f0c2c
 #[cfg(test)]
 mod tests {
     use indoc::indoc;
@@ -89,6 +90,14 @@ mod tests {
         case(indoc!(r#"
             binup 0.3.0
         "#), "0.3.0"),
+
+        case(indoc!(r#"
+            victoria-metrics-20240425-145433-tags-v1.101.0-0-g5334f0c2c
+        "#), "1.101.0"),
+
+        case(indoc!(r#"
+            vmctl version vmctl-20240425-145537-tags-v1.101.0-0-g5334f0c2c
+        "#), "1.101.0"),
 
         case(indoc!(r#"
             prometheus, version 2.51.2 (branch: HEAD, revision: b4c0ab52c3e9b940ab803581ddae9b3d9a452337)
