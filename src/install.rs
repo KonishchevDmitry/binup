@@ -103,6 +103,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
     };
 
     let release_time: SystemTime = asset.time.into();
+    let changelog = tool.changelog.as_ref().unwrap_or(&release.changelog);
     let current_version = current_state.as_ref().and_then(|_|
         version::get_binary_version(&install_path));
 
@@ -112,8 +113,8 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
         } else {
             match current_version {
                 Some(current_version) => info!(
-                    "Reinstalling {name}: {current_version} -> {release_version}{changelog}...",
-                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version),
+                    "Reinstalling {name}: {current_version} -> {release_version}{changelog}",
+                    changelog=format_changelog(changelog, Some(&current_version), &release_version),
                 ),
 
                 None => info!("Reinstalling {name}..."),
@@ -132,13 +133,13 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
 
             match current_version {
                 Some(current_version) => info!(
-                    "Upgrading {name}: {current_version} -> {release_version}{changelog}...",
-                    changelog=format_changelog(tool.changelog.as_deref(), Some(&current_version), &release_version),
+                    "Upgrading {name}: {current_version} -> {release_version}{changelog}",
+                    changelog=format_changelog(changelog, Some(&current_version), &release_version),
                 ),
 
                 None => info!(
-                    "Upgrading {name} to {release_version}{changelog}...",
-                    changelog=format_changelog(tool.changelog.as_deref(), None, &release_version),
+                    "Upgrading {name} to {release_version}{changelog}",
+                    changelog=format_changelog(changelog, None, &release_version),
                 ),
             }
         },
@@ -331,14 +332,10 @@ fn format_list<T: Display, I: Iterator<Item = T>>(mut iter: I) -> String {
     "\n* ".to_owned() + &iter.join("\n* ")
 }
 
-fn format_changelog(changelog: Option<&str>, from: Option<&Version>, to: &ReleaseVersion) -> String {
-    let Some(changelog) = changelog else {
-        return String::new();
-    };
-
-    if matches!((from, to), (Some(from), ReleaseVersion::Version(to)) if from == to) {
-        return String::new();
+fn format_changelog(changelog: &Url, from: Option<&Version>, to: &ReleaseVersion) -> String {
+    match (from, to) {
+        // We don't place ellipsis after changelog, because at least iTerm2 parses URL improperly in this case
+        (Some(from), ReleaseVersion::Version(to)) if from == to => "...".to_owned(),
+        _ => format!(" (see {changelog})")
     }
-
-    format!(" (see {changelog})")
 }

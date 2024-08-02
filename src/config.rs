@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use globset::{GlobBuilder, GlobMatcher};
 use serde::Deserialize;
 use serde::de::{Deserializer, Error};
+use url::Url;
 use validator::Validate;
 
 use crate::core::GenericResult;
@@ -45,9 +46,7 @@ pub struct Tool {
     #[serde(default, deserialize_with = "deserialize_optional_glob")]
     pub binary_matcher: Option<GlobMatcher>,
 
-    // FIXME(konishchev): Provide default
-    // FIXME(konishchev): echo 'Upgrading prometheus: 2.51.2 -> 2.53.1 (see https://github.com/prometheus/prometheus/blob/main/CHANGELOG.md)...'
-    pub changelog: Option<String>,
+    pub changelog: Option<Url>,
 
     #[serde(default, deserialize_with = "deserialize_optional_path")]
     pub path: Option<PathBuf>,

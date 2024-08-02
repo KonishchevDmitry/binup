@@ -20,6 +20,7 @@ pub struct GithubConfig {
 pub struct Release {
     pub tag: String,
     pub assets: Vec<Asset>,
+    pub changelog: Url,
 }
 
 pub struct Asset {
@@ -32,8 +33,8 @@ pub fn get_release(config: &GithubConfig, project: &str) -> GenericResult<Releas
     create_runtime()?.block_on(get_release_async(config, project))
 }
 
-async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResult<Release> {
-    let (owner, repository) = parse_project_name(project)?;
+async fn get_release_async(config: &GithubConfig, full_name: &str) -> GenericResult<Release> {
+    let project = parse_project_name(full_name)?;
 
     let mut builder = OctocrabBuilder::new();
     if let Some(token) = config.token.as_ref() {
@@ -41,9 +42,9 @@ async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResul
     }
 
     let github = builder.build()?;
-    let repository = github.repos(owner, repository);
+    let repository = github.repos(project.owner, project.name);
 
-    debug!("Getting {project} release info...");
+    debug!("Getting {full_name} release info...");
 
     let release = repository.releases().get_latest().await
         .map(Some)
@@ -59,7 +60,9 @@ async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResul
         None => {
             repository.get().await.map_err(|err| {
                 match err {
-                    Error::GitHub {source, ..} if source.status_code == StatusCode::NOT_FOUND => "The project doesn't exist".into(),
+                    Error::GitHub {source, ..} if source.status_code == StatusCode::NOT_FOUND => {
+                        "The project doesn't exist".into()
+                    },
                     _ => humanize_error(err),
                 }
             })?;
@@ -67,7 +70,7 @@ async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResul
         },
     };
 
-    trace!("The latest {project} release:\n{release:#?}");
+    trace!("The latest {full_name} release:\n{release:#?}");
 
     Ok(Release {
         tag: release.tag_name,
@@ -78,18 +81,30 @@ async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResul
                 url: asset.browser_download_url,
             }
         }).collect(),
+        changelog: project.changelog,
     })
 }
 
-fn parse_project_name(name: &str) -> GenericResult<(&str, &str)> {
-    let mut parts = name.split('/');
+struct Project {
+    name: String,
+    owner: String,
+    changelog: Url,
+}
+
+fn parse_project_name(full_name: &str) -> GenericResult<Project> {
+    let mut parts = full_name.split('/');
 
     let owner = parts.next();
-    let repository = parts.next();
+    let name = parts.next();
     let extra = parts.next();
+    let changelog = Url::parse(&format!("https://github.com/{}/releases", full_name)).ok();
 
-    Ok(match (owner, repository, extra) {
-        (Some(owner), Some(repository), None) => (owner, repository),
+    Ok(match (owner, name, extra, changelog) {
+        (Some(owner), Some(name), None, Some(changelog)) => Project {
+            name: name.to_owned(),
+            owner: owner.to_owned(),
+            changelog,
+        },
         _ => {
             return Err!("Invalid GitHub project name");
         },
