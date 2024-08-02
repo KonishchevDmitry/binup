@@ -77,6 +77,8 @@ fn parse_binary_version(stdout: &str) -> Option<Version> {
     None
 }
 
+// FIXME(konishchev): vmctl version vmctl-20240425-145537-tags-v1.101.0-0-g5334f0c2c
+// FIXME(konishchev): victoria-metrics-20240425-145433-tags-v1.101.0-0-g5334f0c2c
 #[cfg(test)]
 mod tests {
     use indoc::indoc;

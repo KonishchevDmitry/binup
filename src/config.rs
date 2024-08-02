@@ -41,9 +41,12 @@ pub struct Tool {
     #[serde(deserialize_with = "deserialize_glob")]
     pub release_matcher: GlobMatcher,
 
+    // FIXME(konishchev): https://docs.rs/globset/latest/globset/#syntax
     #[serde(default, deserialize_with = "deserialize_optional_glob")]
     pub binary_matcher: Option<GlobMatcher>,
 
+    // FIXME(konishchev): Provide default
+    // FIXME(konishchev): echo 'Upgrading prometheus: 2.51.2 -> 2.53.1 (see https://github.com/prometheus/prometheus/blob/main/CHANGELOG.md)...'
     pub changelog: Option<String>,
 
     #[serde(default, deserialize_with = "deserialize_optional_path")]
