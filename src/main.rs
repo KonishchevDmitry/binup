@@ -25,13 +25,20 @@ fn main() {
         process::exit(1);
     });
 
-    if let Err(e) = LoggingConfig::new(module_path!(), args.log_level).minimal().build() {
-        let _ = writeln!(io::stderr(), "Failed to initialize the logging: {}.", e);
+    if let Err(err) = LoggingConfig::new(module_path!(), args.log_level).minimal().build() {
+        let _ = writeln!(io::stderr(), "Failed to initialize the logging: {}.", err);
         process::exit(1);
     }
 
-    if let Err(e) = run(&args.config_path, args.action) {
-        error!("{}.", e);
+    if let Err(err) = run(&args.config_path, args.action) {
+        let message = err.to_string();
+
+        if message.contains('\n') || message.ends_with('.') {
+            error!("{message}");
+        } else {
+            error!("{message}.");
+        }
+
         process::exit(1);
     }
 }

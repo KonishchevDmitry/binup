@@ -170,6 +170,7 @@ enum Matcher {
 
 struct Installer {
     matcher: Matcher,
+    binaries: Vec<PathBuf>,
     matches: Vec<PathBuf>,
 
     temp_path: Option<PathBuf>,
@@ -181,6 +182,7 @@ impl Installer {
     fn new(matcher: Matcher, path: &Path, time: SystemTime) -> Installer {
         Installer {
             matcher,
+            binaries: Vec::new(),
             matches: Vec::new(),
             temp_path: None,
             path: path.to_owned(),
@@ -190,8 +192,20 @@ impl Installer {
 
     fn finish(mut self, url: &Url) -> EmptyResult {
         match self.matches.len() {
-            0 => return Err!("The specified binary matcher matches none of release ({url}) files"),
+            0 => {
+                let message = format!("The specified binary matcher matches none of release ({url}) files");
+
+                if self.binaries.is_empty() {
+                    return Err!("{message}. The release has no executable binaries at all")
+                } else {
+                    return Err!(
+                        "{message}. The release has the following executable binaries:{}",
+                        format_list(self.binaries.iter().map(|path| path.display())))
+                }
+            },
+
             1 => {},
+
             _ => {
                 return Err!(
                     "The specified binary matcher matches multiple release ({url}) files:{}",
@@ -223,6 +237,10 @@ impl Drop for Installer {
 
 impl download::Installer for Installer {
     fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult {
+        if mode & 0o100 != 0 {
+            self.binaries.push(path.to_owned());
+        }
+
         if !match self.matcher {
             Matcher::Simple(ref name) => path == name,
             Matcher::Glob(ref glob) => glob.is_match(path),
