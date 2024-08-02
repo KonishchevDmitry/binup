@@ -423,9 +423,9 @@ dependencies = [
 
 [[package]]
 name = "easy-logging"
-version = "0.2.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02988ccb7715d322d437b7e3baacf4b8726f5909378c747d495a644cf8160c51"
+checksum = "4aa29c714c7c6a9051e2b4f59dd167c943be3c3dd6ceaa1d71c3017cf7e6add9"
 dependencies = [
  "ansi_term",
  "atty",

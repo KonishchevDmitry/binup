@@ -12,6 +12,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process;
 
+use easy_logging::LoggingConfig;
 use log::error;
 
 use crate::cli::Action;
@@ -24,7 +25,7 @@ fn main() {
         process::exit(1);
     });
 
-    if let Err(e) = easy_logging::init(module_path!().split("::").next().unwrap(), args.log_level) {
+    if let Err(e) = LoggingConfig::new(module_path!(), args.log_level).minimal().build() {
         let _ = writeln!(io::stderr(), "Failed to initialize the logging: {}.", e);
         process::exit(1);
     }

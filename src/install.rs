@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use easy_logging::GlobalContext;
 use globset::GlobMatcher;
 use itertools::Itertools;
-use log::{debug, info, error};
+use log::{Level, debug, info, error};
 use semver::Version;
 use url::Url;
 
@@ -43,10 +43,9 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
     };
 
     for (name, tool) in tools {
-        let _logging_context = GlobalContext::new(name);
+        let _logging_context = GlobalContext::new_conditional(Level::Debug, name);
 
         if names.is_none() {
-            // FIXME(konishchev): Humanize logging
             info!("Checking {name}...");
         }
 
