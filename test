@@ -45,7 +45,7 @@ echo "$tool 100.0.0"
 EOF
 
     chmod a+x old-release-mock new-release-mock
-    touch --no-create --date 2024-07-29 old-release-mock
+    touch -c -d 2024-08-01T00:00:00 old-release-mock
 
     cat > "config.yaml" <<EOF
 path: $temp_dir/bin
