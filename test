@@ -66,7 +66,7 @@ tools:
     binary_matcher: $tool
     changelog: https://github.com/$project/releases
     path: $temp_dir/custom-bin
-    post: touch $temp_dir/post-install-marker && echo "Post-script stdout" && echo "Post-script stderr" >&2
+    post: touch $temp_dir/post-install-marker && echo "Post-install script stdout" && echo "Post-install script stderr" >&2
 
 $github_config
 EOF
