@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use easy_logging::GlobalContext;
 use itertools::Itertools;
-use log::{Level, debug, info, error};
+use log::{Level, debug, info, warn, error};
 use semver::Version;
 use url::Url;
 
@@ -312,7 +312,7 @@ fn run_post_script(script: &str) -> EmptyResult {
     if stderr.trim().is_empty() {
         debug!("Post-install script has finished.");
     } else {
-        debug!("Post-install script has finished:{}", util::format_multiline(&stderr));
+        warn!("Post-install script:{}", util::format_multiline(&stderr));
     }
 
     Ok(())
