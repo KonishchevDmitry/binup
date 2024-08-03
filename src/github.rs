@@ -1,7 +1,7 @@
 use std::error::Error as _;
 
 use chrono::{DateTime, Utc};
-use http::StatusCode;
+use http::{StatusCode, header};
 use log::{debug, trace};
 use octocrab::{OctocrabBuilder, Error};
 use octocrab::models::repos::Release as ReleaseModel;
@@ -10,10 +10,12 @@ use tokio::runtime::Runtime;
 use url::Url;
 
 use crate::core::GenericResult;
+use crate::util;
 
 #[derive(Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GithubConfig {
+    // FIXME(konishchev): https://github.com/settings/tokens (no permissions required)
     token: Option<String>,
 }
 
@@ -36,7 +38,9 @@ pub fn get_release(config: &GithubConfig, project: &str) -> GenericResult<Releas
 async fn get_release_async(config: &GithubConfig, full_name: &str) -> GenericResult<Release> {
     let project = parse_project_name(full_name)?;
 
-    let mut builder = OctocrabBuilder::new();
+    let mut builder = OctocrabBuilder::new()
+        .add_header(header::USER_AGENT, util::USER_AGENT.to_owned());
+
     if let Some(token) = config.token.as_ref() {
         builder = builder.user_access_token(token.to_owned());
     }

@@ -1,18 +1,13 @@
 use std::io::Read;
 use std::path::Path;
 
-use const_format::formatcp;
 use log::debug;
 use reqwest::blocking::ClientBuilder;
 use tar::{Archive, EntryType};
 use url::Url;
 
 use crate::core::{EmptyResult, GenericResult};
-
-static USER_AGENT: &str = formatcp!(
-    "{name}/{version} ({homepage})",
-    name=env!("CARGO_PKG_NAME"), version=env!("CARGO_PKG_VERSION"), homepage=env!("CARGO_PKG_REPOSITORY"),
-);
+use crate::util;
 
 pub trait Installer {
     fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult;
@@ -20,7 +15,7 @@ pub trait Installer {
 
 pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyResult {
     let reader = ReleaseReaderBuilder::new(name)?;
-    let client = ClientBuilder::new().user_agent(USER_AGENT).build()?;
+    let client = ClientBuilder::new().user_agent(util::USER_AGENT).build()?;
 
     debug!("Downloading {url}...");
 
