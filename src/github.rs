@@ -15,7 +15,6 @@ use crate::util;
 #[derive(Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GithubConfig {
-    // FIXME(konishchev): https://github.com/settings/tokens (no permissions required)
     token: Option<String>,
 }
 

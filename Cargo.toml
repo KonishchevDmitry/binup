@@ -1,13 +1,16 @@
-# FIXME(konishchev): Fill it
-
 [package]
 name = "binup"
 version = "0.9.1"
-description = "WIP"
+description = "Automated app installation from GitHub releases"
+keywords = ["automation", "github", "package-manager", "release", "tools"]
+categories = ["command-line-utilities"]
 
 authors = ["Dmitry Konishchev <konishchev@gmail.com>"]
+homepage = "https://github.com/KonishchevDmitry/binup"
 repository = "https://github.com/KonishchevDmitry/binup"
+documentation = "https://github.com/KonishchevDmitry/binup"
 license = "GPL-3.0+"
+readme = "README.md"
 edition = "2021"
 
 [dependencies]

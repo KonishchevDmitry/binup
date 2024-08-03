@@ -41,7 +41,6 @@ pub struct Tool {
     pub changelog: Option<Url>,
 
     pub release_matcher: Matcher,
-    // FIXME(konishchev): https://docs.rs/globset/latest/globset/#syntax
     pub binary_matcher: Option<Matcher>,
 
     #[serde(default, deserialize_with = "deserialize_optional_path")]
