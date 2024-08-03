@@ -57,12 +57,12 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
     Ok(())
 }
 
-fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_config: &GithubConfig) -> EmptyResult {
-    let project = &tool.project;
+fn install_tool(name: &str, spec: &Tool, mut mode: Mode, path: &Path, github_config: &GithubConfig) -> EmptyResult {
+    let project = &spec.project;
     let install_path = path.join(name);
-    let current_state = check_tool(&install_path)?;
+    let tool = check_tool(&install_path)?;
 
-    match (mode, current_state.is_some()) {
+    match (mode, tool.is_some()) {
         (Mode::Install{force: false}, true) => {
             info!("{name} is already installed.");
             return Ok(());
@@ -73,7 +73,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
         _ => {},
     }
 
-    let release = github::get_release(github_config, &tool.project).map_err(|e| format!(
+    let release = github::get_release(github_config, &spec.project).map_err(|e| format!(
         "Failed to get latest release info for {project}: {e}"))?;
     let release_version = ReleaseVersion::new(&release.tag);
 
@@ -83,7 +83,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
     }
 
     let assets: Vec<_> = release.assets.iter()
-        .filter(|asset| tool.release_matcher.matches(&asset.name))
+        .filter(|asset| spec.release_matcher.matches(&asset.name))
         .collect();
 
     let asset = match assets.len() {
@@ -103,12 +103,12 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
     };
 
     let release_time: SystemTime = asset.time.into();
-    let changelog = tool.changelog.as_ref().unwrap_or(&release.changelog);
-    let current_version = current_state.as_ref().and_then(|_|
+    let changelog = spec.changelog.as_ref().unwrap_or(&release.changelog);
+    let current_version = tool.as_ref().and_then(|_|
         version::get_binary_version(&install_path));
 
     match mode {
-        Mode::Install {force: _} => if current_state.is_none() {
+        Mode::Install {force: _} => if tool.is_none() {
             info!("Installing {name}...");
         } else {
             match current_version {
@@ -122,9 +122,9 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
         },
 
         Mode::Upgrade => {
-            if match (current_state.as_ref(), current_version.as_ref(), &release_version) {
+            if match (tool.as_ref(), current_version.as_ref(), &release_version) {
                 (_, Some(current_version), ReleaseVersion::Version(lastest_version)) => current_version >= lastest_version,
-                (Some(current_state), _, _) if current_state.modify_time == release_time => true,
+                (Some(tool), _, _) if tool.modify_time == release_time => true,
                 _ => false,
             } {
                 info!("{name} is already up-to-date.");
@@ -145,7 +145,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
         },
     }
 
-    let binary_matcher = tool.binary_matcher.clone().unwrap_or_else(||
+    let binary_matcher = spec.binary_matcher.clone().unwrap_or_else(||
         Matcher::Simple(PathBuf::from(name)));
 
     let mut installer = Installer::new(binary_matcher, &install_path, release_time);
@@ -155,7 +155,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
 
     installer.finish(&asset.url)?;
 
-    if let Some(script) = tool.post.as_ref() {
+    if let Some(script) = spec.post.as_ref() {
         run_post_script(script)?;
     }
 
@@ -277,7 +277,6 @@ impl download::Installer for Installer {
 
 struct ToolState {
     modify_time: SystemTime,
-    // FIXME(konishchev): Version
 }
 
 fn check_tool(path: &Path) -> GenericResult<Option<ToolState>> {
