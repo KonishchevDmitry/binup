@@ -71,7 +71,7 @@ pub fn get_binary_version(path: &Path) -> Option<Version> {
 fn parse_binary_version(stdout: &str) -> Option<Version> {
     for word in stdout.split('\n').next().unwrap().split(' ') {
         for token in word.split('-') {
-            let token = token.strip_prefix("v").unwrap_or(token);
+            let token = token.strip_prefix('v').unwrap_or(token);
             if let Ok(version) = Version::parse(token) {
                 return Some(version);
             }

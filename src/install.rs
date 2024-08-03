@@ -7,7 +7,6 @@ use std::process::Command;
 use std::time::SystemTime;
 
 use easy_logging::GlobalContext;
-use globset::GlobMatcher;
 use itertools::Itertools;
 use log::{Level, debug, info, error};
 use semver::Version;
@@ -17,6 +16,7 @@ use crate::config::{Config, Tool};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download;
 use crate::github::{self, GithubConfig};
+use crate::matcher::Matcher;
 use crate::util;
 use crate::version::{self, ReleaseVersion};
 
@@ -83,7 +83,7 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
     }
 
     let assets: Vec<_> = release.assets.iter()
-        .filter(|asset| tool.release_matcher.is_match(&asset.name))
+        .filter(|asset| tool.release_matcher.matches(&asset.name))
         .collect();
 
     let asset = match assets.len() {
@@ -145,10 +145,8 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
         },
     }
 
-    let binary_matcher = match tool.binary_matcher {
-        None => Matcher::Simple(PathBuf::from(name)),
-        Some(ref glob) => Matcher::Glob(glob.clone()),
-    };
+    let binary_matcher = tool.binary_matcher.clone().unwrap_or_else(||
+        Matcher::Simple(PathBuf::from(name)));
 
     let mut installer = Installer::new(binary_matcher, &install_path, release_time);
 
@@ -162,11 +160,6 @@ fn install_tool(name: &str, tool: &Tool, mut mode: Mode, path: &Path, github_con
     }
 
     Ok(())
-}
-
-enum Matcher {
-    Simple(PathBuf),
-    Glob(GlobMatcher),
 }
 
 struct Installer {
@@ -242,10 +235,7 @@ impl download::Installer for Installer {
             self.binaries.push(path.to_owned());
         }
 
-        if !match self.matcher {
-            Matcher::Simple(ref name) => path == name,
-            Matcher::Glob(ref glob) => glob.is_match(path),
-        } {
+        if !self.matcher.matches(path) {
             return Ok(());
         }
 

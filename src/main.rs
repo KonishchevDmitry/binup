@@ -5,6 +5,7 @@ mod config;
 mod download;
 mod github;
 mod install;
+mod matcher;
 mod util;
 mod version;
 
