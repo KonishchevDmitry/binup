@@ -35,7 +35,6 @@ impl<'de> Deserialize<'de> for Matcher {
                 Regex::new(regex).map_err(|e| D::Error::custom(e.to_string()))?
             )
         } else {
-            // XXX(konishchev): HERE
             Matcher::Glob(GlobBuilder::new(&pattern)
                 .literal_separator(true)
                 .backslash_escape(true)
