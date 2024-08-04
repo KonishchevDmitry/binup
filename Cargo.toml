@@ -37,6 +37,7 @@ tar = "0.4.41"
 tokio = "1"
 url = "2.5.2"
 validator = { version = "0.18.1", features = ["derive"] }
+xz2 = "0.1.7"
 
 [dev-dependencies]
 indoc = "2.0.5"

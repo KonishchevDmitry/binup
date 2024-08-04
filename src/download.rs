@@ -60,6 +60,7 @@ impl ReleaseReaderBuilder {
             let decoder: DecoderBuilder = match extension {
                 "bz2" => Box::new(|reader| Box::new(bzip2::read::BzDecoder::new(reader))),
                 "gz" => Box::new(|reader| Box::new(flate2::read::GzDecoder::new(reader))),
+                "xz" => Box::new(|reader| Box::new(xz2::read::XzDecoder::new(reader))),
                 _ => return None,
             };
 
