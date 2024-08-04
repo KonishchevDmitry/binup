@@ -36,7 +36,7 @@ tools:
     # * Pattern started with '~' is treated as regular expression (https://docs.rs/regex/latest/regex/#syntax)
     release_matcher: prometheus-*.linux-amd64.tar.gz
 
-    # Binary path to look inside the release archive. If it's not specified, the tool name will be used instead.
+    # Binary path to look for inside the release archive. If it's not specified, the tool name will be used.
     binary_matcher: "*/prometheus"
 
     # Post-install script
