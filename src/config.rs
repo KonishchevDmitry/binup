@@ -40,7 +40,7 @@ pub struct Tool {
     pub project: String,
     pub changelog: Option<Url>,
 
-    pub release_matcher: Matcher,
+    pub release_matcher: Option<Matcher>,
     pub binary_matcher: Option<Matcher>,
 
     #[serde(default, deserialize_with = "deserialize_optional_path")]

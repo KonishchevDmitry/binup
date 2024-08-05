@@ -15,8 +15,9 @@ use url::Url;
 use crate::config::{Config, Tool};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download;
-use crate::github::{self, GithubConfig};
+use crate::github;
 use crate::matcher::Matcher;
+use crate::release::{self, Release, Asset};
 use crate::util;
 use crate::version::{self, ReleaseVersion};
 
@@ -50,15 +51,14 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
         }
 
         let path = tool.path.as_ref().unwrap_or(&config.path);
-        install_tool(name, tool, mode, path, &config.github).map_err(|e| format!(
+        install_tool(config, name, tool, mode, path).map_err(|e| format!(
             "{name}: {e}"))?;
     }
 
     Ok(())
 }
 
-fn install_tool(name: &str, spec: &Tool, mut mode: Mode, path: &Path, github_config: &GithubConfig) -> EmptyResult {
-    let project = &spec.project;
+fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: &Path) -> EmptyResult {
     let install_path = path.join(name);
     let tool = check_tool(&install_path)?;
 
@@ -73,37 +73,19 @@ fn install_tool(name: &str, spec: &Tool, mut mode: Mode, path: &Path, github_con
         _ => {},
     }
 
-    let release = github::get_release(github_config, &spec.project).map_err(|e| format!(
-        "Failed to get latest release info for {project}: {e}"))?;
-    let release_version = ReleaseVersion::new(&release.tag);
+    let release = github::get_release(&config.github, &spec.project).map_err(|e| format!(
+        "Failed to get latest release info for {}: {e}", spec.project))?;
 
-    debug!("The latest release is {release_version}:");
+    let release_version = &release.version;
+    let changelog = spec.changelog.as_ref().unwrap_or(&release.project.changelog);
+
+    debug!("The latest release is {}:", release.version);
     for asset in &release.assets {
         debug!("* {}", asset.name)
     }
 
-    let assets: Vec<_> = release.assets.iter()
-        .filter(|asset| spec.release_matcher.matches(&asset.name))
-        .collect();
-
-    let asset = match assets.len() {
-        0 => if release.assets.is_empty() {
-            return Err!("The latest release of {project} ({release_version}) has no assets");
-        } else {
-            return Err!(
-                "The specified release matcher matches none of the following assets:{}",
-                format_list(release.assets.iter().map(|asset| &asset.name)));
-        },
-        1 => *assets.first().unwrap(),
-        _ => {
-            return Err!(
-                "The specified release matcher matches multiple assets:{}",
-                format_list(assets.iter().map(|asset| &asset.name)));
-        }
-    };
-
+    let asset = select_asset(&release, spec.release_matcher.as_ref())?;
     let release_time: SystemTime = asset.time.into();
-    let changelog = spec.changelog.as_ref().unwrap_or(&release.changelog);
     let current_version = tool.as_ref().and_then(|_|
         version::get_binary_version(&install_path));
 
@@ -293,6 +275,48 @@ fn check_tool(path: &Path) -> GenericResult<Option<ToolState>> {
     };
 
     Ok(Some(ToolState {modify_time}))
+}
+
+fn select_asset<'a>(release: &'a Release, matcher: Option<&Matcher>) -> GenericResult<&'a Asset> {
+    if release.assets.is_empty() {
+        return Err!("The latest release of {project} ({version}) has no assets",
+            project=release.project.full_name(), version=release.version);
+    }
+
+    if let Some(matcher) = matcher {
+        let assets: Vec<_> = release.assets.iter()
+            .filter(|asset| matcher.matches(&asset.name))
+            .collect();
+
+        return Ok(match assets.len() {
+            0 => {
+                return Err!(
+                    "The specified release matcher matches none of the following assets:{}",
+                    format_list(release.assets.iter().map(|asset| &asset.name)));
+            },
+            1 => assets[0],
+            _ => {
+                return Err!(
+                    "The specified release matcher matches multiple assets:{}",
+                    format_list(assets.iter().map(|asset| &asset.name)));
+            }
+        });
+    }
+
+    for matcher in release::generate_release_matchers(release) {
+        let assets: Vec<_> = release.assets.iter()
+            .filter(|asset| matcher.matches(&asset.name))
+            .collect();
+
+        if assets.len() == 1 {
+            return Ok(assets[0]);
+        }
+    }
+
+    return Err!(concat!(
+        "Unable to automatically choose the proper release from the following assets:{}\n\n",
+        "Release matcher should be specifed.",
+    ), format_list(release.assets.iter().map(|asset| &asset.name)));
 }
 
 fn run_post_script(script: &str) -> EmptyResult {

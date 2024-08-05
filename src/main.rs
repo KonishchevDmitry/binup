@@ -6,6 +6,8 @@ mod download;
 mod github;
 mod install;
 mod matcher;
+mod project;
+mod release;
 mod util;
 mod version;
 

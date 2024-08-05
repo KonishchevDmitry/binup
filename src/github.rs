@@ -1,6 +1,5 @@
 use std::error::Error as _;
 
-use chrono::{DateTime, Utc};
 use http::{StatusCode, header};
 use log::{debug, trace};
 use octocrab::{OctocrabBuilder, Error};
@@ -10,6 +9,8 @@ use tokio::runtime::Runtime;
 use url::Url;
 
 use crate::core::GenericResult;
+use crate::project::Project;
+use crate::release::{Release, Asset};
 use crate::util;
 
 #[derive(Default, Deserialize)]
@@ -18,24 +19,12 @@ pub struct GithubConfig {
     token: Option<String>,
 }
 
-pub struct Release {
-    pub tag: String,
-    pub assets: Vec<Asset>,
-    pub changelog: Url,
-}
-
-pub struct Asset {
-    pub name: String,
-    pub time: DateTime<Utc>,
-    pub url: Url,
-}
-
 pub fn get_release(config: &GithubConfig, project: &str) -> GenericResult<Release> {
     create_runtime()?.block_on(get_release_async(config, project))
 }
 
-async fn get_release_async(config: &GithubConfig, full_name: &str) -> GenericResult<Release> {
-    let project = parse_project_name(full_name)?;
+async fn get_release_async(config: &GithubConfig, project: &str) -> GenericResult<Release> {
+    let project = parse_project_name(project)?;
 
     let mut builder = OctocrabBuilder::new()
         .add_header(header::USER_AGENT, util::USER_AGENT.to_owned());
@@ -45,9 +34,9 @@ async fn get_release_async(config: &GithubConfig, full_name: &str) -> GenericRes
     }
 
     let github = builder.build()?;
-    let repository = github.repos(project.owner, project.name);
+    let repository = github.repos(&project.owner, &project.name);
 
-    debug!("Getting {full_name} release info...");
+    debug!("Getting {} release info...", project.full_name());
 
     let release = repository.releases().get_latest().await
         .map(Some)
@@ -73,25 +62,15 @@ async fn get_release_async(config: &GithubConfig, full_name: &str) -> GenericRes
         },
     };
 
-    trace!("The latest {full_name} release:\n{release:#?}");
+    trace!("The latest {} release:\n{release:#?}", project.full_name());
 
-    Ok(Release {
-        tag: release.tag_name,
-        assets: release.assets.into_iter().map(|asset| {
-            Asset {
-                name: asset.name,
-                time: asset.updated_at,
-                url: asset.browser_download_url,
-            }
-        }).collect(),
-        changelog: project.changelog,
-    })
-}
-
-struct Project {
-    name: String,
-    owner: String,
-    changelog: Url,
+    Ok(Release::new(project, &release.tag_name, release.assets.into_iter().map(|asset| {
+        Asset {
+            name: asset.name,
+            time: asset.updated_at,
+            url: asset.browser_download_url,
+        }
+    }).collect()))
 }
 
 fn parse_project_name(full_name: &str) -> GenericResult<Project> {
