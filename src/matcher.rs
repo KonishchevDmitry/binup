@@ -1,4 +1,5 @@
-use std::path::{Path, PathBuf};
+use std::fmt::{self, Display, Formatter};
+use std::path::Path;
 
 use globset::{GlobBuilder, GlobMatcher};
 use regex::Regex;
@@ -7,7 +8,6 @@ use serde::de::{Deserializer, Error};
 
 #[derive(Clone)]
 pub enum Matcher {
-    Simple(PathBuf),
     Glob(GlobMatcher),
     Regex(Regex),
 }
@@ -17,7 +17,6 @@ impl Matcher {
         let path = path.as_ref();
 
         match self {
-            Matcher::Simple(name) => path == name,
             Matcher::Glob(glob) => glob.is_match(path),
             Matcher::Regex(regex) => path.to_str().map(|path| regex.is_match(path)).unwrap_or(false),
         }
@@ -42,5 +41,14 @@ impl<'de> Deserialize<'de> for Matcher {
                 .compile_matcher()
             )
         })
+    }
+}
+
+impl Display for Matcher {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Matcher::Glob(glob) => glob.glob().fmt(formatter),
+            Matcher::Regex(regex) => write!(formatter, "~{regex}"),
+        }
     }
 }

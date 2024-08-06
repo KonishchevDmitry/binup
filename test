@@ -53,12 +53,9 @@ path: $temp_dir/bin
 tools:
   $tool:
     project: $project
-    release_matcher: $release_matcher
 
   up-to-date:
     project: $project
-    release_matcher: $release_matcher
-    binary_matcher: $tool
 
   upgradable:
     project: $project

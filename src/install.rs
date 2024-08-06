@@ -84,7 +84,7 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
         debug!("* {}", asset.name)
     }
 
-    let asset = select_asset(&release, spec.release_matcher.as_ref())?;
+    let asset = select_asset(name, &release, spec.release_matcher.as_ref())?;
     let release_time: SystemTime = asset.time.into();
     let current_version = tool.as_ref().and_then(|_|
         version::get_binary_version(&install_path));
@@ -96,7 +96,7 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
             match current_version {
                 Some(current_version) => info!(
                     "Reinstalling {name}: {current_version} -> {release_version}{changelog}",
-                    changelog=format_changelog(changelog, Some(&current_version), &release_version),
+                    changelog=format_changelog(changelog, Some(&current_version), release_version),
                 ),
 
                 None => info!("Reinstalling {name}..."),
@@ -116,21 +116,18 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
             match current_version {
                 Some(current_version) => info!(
                     "Upgrading {name}: {current_version} -> {release_version}{changelog}",
-                    changelog=format_changelog(changelog, Some(&current_version), &release_version),
+                    changelog=format_changelog(changelog, Some(&current_version), release_version),
                 ),
 
                 None => info!(
                     "Upgrading {name} to {release_version}{changelog}",
-                    changelog=format_changelog(changelog, None, &release_version),
+                    changelog=format_changelog(changelog, None, release_version),
                 ),
             }
         },
     }
 
-    let binary_matcher = spec.binary_matcher.clone().unwrap_or_else(||
-        Matcher::Simple(PathBuf::from(name)));
-
-    let mut installer = Installer::new(binary_matcher, &install_path, release_time);
+    let mut installer = Installer::new(name, &release, spec.binary_matcher.clone(), &install_path, release_time);
 
     download::download(&asset.url, &asset.name, &mut installer).map_err(|e| format!(
         "Failed to download {}: {e}", asset.url))?;
@@ -146,6 +143,8 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
 
 struct Installer {
     matcher: Matcher,
+    automatic_matcher: bool,
+
     binaries: Vec<PathBuf>,
     matches: Vec<PathBuf>,
 
@@ -155,11 +154,21 @@ struct Installer {
 }
 
 impl Installer {
-    fn new(matcher: Matcher, path: &Path, time: SystemTime) -> Installer {
+    fn new(name: &str, release: &Release, matcher: Option<Matcher>, path: &Path, time: SystemTime) -> Installer {
+        let mut automatic_matcher = false;
+
+        let matcher = matcher.unwrap_or_else(|| {
+            automatic_matcher = true;
+            release::generate_binary_matcher(name, release)
+        });
+
         Installer {
             matcher,
+            automatic_matcher,
+
             binaries: Vec::new(),
             matches: Vec::new(),
+
             temp_path: None,
             path: path.to_owned(),
             time,
@@ -167,25 +176,33 @@ impl Installer {
     }
 
     fn finish(mut self, url: &Url) -> EmptyResult {
-        match self.matches.len() {
-            0 => {
+        if self.matches.len() != 1 {
+            if self.automatic_matcher {
+                let message = format!("Unable to automatically choose the proper executable from release ({url}) binaries");
+
+                if self.binaries.is_empty() {
+                    return Err!("{message}: the release has no executable binaries")
+                } else {
+                    return Err!(
+                        "{message}:{}\n\nBinary matcher should be specified.",
+                        format_list(self.binaries.iter().map(|path| path.display())));
+                }
+            } else {
+                if !self.matches.is_empty() {
+                    return Err!(
+                        "The specified binary matcher matches multiple release ({url}) files:{}",
+                        format_list(self.matches.iter().map(|path| path.display())));
+                }
+
                 let message = format!("The specified binary matcher matches none of release ({url}) files");
 
                 if self.binaries.is_empty() {
-                    return Err!("{message}. The release has no executable binaries at all")
+                    return Err!("{message}. The release has no executable binaries at all");
                 } else {
                     return Err!(
                         "{message}. The release has the following executable binaries:{}",
-                        format_list(self.binaries.iter().map(|path| path.display())))
+                        format_list(self.binaries.iter().map(|path| path.display())));
                 }
-            },
-
-            1 => {},
-
-            _ => {
-                return Err!(
-                    "The specified binary matcher matches multiple release ({url}) files:{}",
-                    format_list(self.matches.iter().map(|path| path.display())));
             }
         }
 
@@ -213,6 +230,7 @@ impl Drop for Installer {
 
 impl download::Installer for Installer {
     fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult {
+        // FIXME(konishchev): Rewrite for automatic
         if mode & 0o100 != 0 {
             self.binaries.push(path.to_owned());
         }
@@ -277,7 +295,7 @@ fn check_tool(path: &Path) -> GenericResult<Option<ToolState>> {
     Ok(Some(ToolState {modify_time}))
 }
 
-fn select_asset<'a>(release: &'a Release, matcher: Option<&Matcher>) -> GenericResult<&'a Asset> {
+fn select_asset<'a>(binary_name: &str, release: &'a Release, matcher: Option<&Matcher>) -> GenericResult<&'a Asset> {
     if release.assets.is_empty() {
         return Err!("The latest release of {project} ({version}) has no assets",
             project=release.project.full_name(), version=release.version);
@@ -303,7 +321,7 @@ fn select_asset<'a>(release: &'a Release, matcher: Option<&Matcher>) -> GenericR
         });
     }
 
-    for matcher in release::generate_release_matchers(release) {
+    for matcher in release::generate_release_matchers(binary_name, release) {
         let assets: Vec<_> = release.assets.iter()
             .filter(|asset| matcher.matches(&asset.name))
             .collect();
@@ -313,10 +331,10 @@ fn select_asset<'a>(release: &'a Release, matcher: Option<&Matcher>) -> GenericR
         }
     }
 
-    return Err!(concat!(
+    Err!(concat!(
         "Unable to automatically choose the proper release from the following assets:{}\n\n",
         "Release matcher should be specifed.",
-    ), format_list(release.assets.iter().map(|asset| &asset.name)));
+    ), format_list(release.assets.iter().map(|asset| &asset.name)))
 }
 
 fn run_post_script(script: &str) -> EmptyResult {
