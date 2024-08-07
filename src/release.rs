@@ -37,13 +37,12 @@ pub fn generate_release_matchers(binary_name: &str, release: &Release) -> Vec<Ma
     generate_release_matchers_inner(binary_name, &release.project.name, consts::OS, consts::ARCH).unwrap_or_default()
 }
 
-// XXX(konishchev): Rewrite
 pub fn generate_release_matchers_inner(binary_name: &str, project_name: &str, os: &str, arch: &str) -> Option<Vec<Matcher>> {
     let os = OS::from_str(os).ok()?;
     let arch = Arch::from_str(arch).ok()?;
 
     let os_regex = match os {
-        OS::Linux => "(?:linux|unknown-linux(?:-gnu)?)",
+        OS::Linux => "linux",
         OS::MacOS => "(?:apple-darwin|darwin|macos)",
         _ => return None,
     };
@@ -54,31 +53,51 @@ pub fn generate_release_matchers_inner(binary_name: &str, project_name: &str, os
         _ => return None,
     };
 
-    let basic_regex = Regex::new(&format!(r"[-_.](?:{os_regex}[-_.]{arch_regex}|{arch_regex}[-_.]{os_regex})(?:[-_.].+?)?\.tar\.[^.]+$")).unwrap();
+    let separator_regex = "[-.]";
+    let any_fields_regex = format!("(?:{separator_regex}[^/]+)?");
 
-    let project_regex = Regex::new(&format!("^{project}([-_][^-_]+?)?{basic}",
-        project=regex::escape(project_name), basic=basic_regex)).unwrap();
+    let platform_regex = format!("(?:{os_regex}[-_]{arch_regex}|{arch_regex}[-_]{os_regex})");
+    let basic_regex = format!(
+        r"{separator_regex}{platform_regex}{any_fields_regex}\.tar\.[^/.]+$",
+    );
 
-    let binary_regex = Regex::new(&format!("^{binary}{basic}",
-        binary=regex::escape(binary_name), basic=basic_regex)).unwrap();
+    let mut matchers = Vec::new();
 
-    Some(vec![
-        Matcher::Regex(binary_regex),
-        Matcher::Regex(project_regex),
-        Matcher::Regex(basic_regex),
-    ])
+    for name in [binary_name, project_name] {
+        let name_regex = get_name_matcher(name);
+        matchers.push(Regex::new(&format!("^{name_regex}{any_fields_regex}{basic_regex}")).unwrap());
+    }
+    matchers.push(Regex::new(&basic_regex).unwrap());
+
+    Some(matchers.into_iter().map(Matcher::Regex).collect())
 }
 
 pub fn generate_binary_matcher(binary_name: &str, release: &Release) -> Matcher {
     generate_binary_matcher_inner(binary_name, &release.project.name)
 }
 
-// XXX(konishchev): Rewrite
 fn generate_binary_matcher_inner(binary_name: &str, project_name: &str) -> Matcher {
-    Matcher::Regex(Regex::new(&format!(
-        "(?:^|/)(?:{binary}|{project})$",
-        binary=regex::escape(binary_name), project=regex::escape(project_name),
-    )).unwrap())
+    let binary_name_matcher = get_name_matcher(binary_name);
+    let project_name_matcher = get_name_matcher(project_name);
+
+    let matcher = if binary_name_matcher == project_name_matcher {
+        binary_name_matcher
+    } else {
+        format!("(?:{binary_name_matcher}|{project_name_matcher})")
+    };
+
+    Matcher::Regex(Regex::new(&format!("(?:^|/){matcher}$")).unwrap())
+}
+
+fn get_name_matcher(name: &str) -> String {
+    let hyphen_name = name.replace('_', "-");
+    let underscore_name = hyphen_name.replace('-', "_");
+
+    if hyphen_name == underscore_name {
+        regex::escape(&hyphen_name)
+    } else {
+        format!("(?:{}|{})", regex::escape(&hyphen_name), regex::escape(&underscore_name))
+    }
 }
 
 #[cfg(test)]
@@ -261,12 +280,22 @@ mod tests {
 
     #[rstest(binary_name, project_name, file,
         case("tool", "tool", "tool"),
+
         case("binary", "project", "binary"),
         case("binary", "project", "directory/binary"),
         case("binary", "project", "directory/sub-directory/binary"),
+
         case("binary", "project", "project"),
         case("binary", "project", "directory/project"),
         case("binary", "project", "directory/sub-directory/project"),
+
+        case("b-b-b", "p-p-p", "b-b-b"),
+        case("b-b-b", "p-p-p", "b_b_b"),
+        case("b_b_b", "p-p-p", "b-b-b"),
+
+        case("b-b-b", "p-p-p", "p-p-p"),
+        case("b-b-b", "p-p-p", "p_p_p"),
+        case("b-b-b", "p_p_p", "p-p-p"),
     )]
     fn binary_matcher(binary_name: &str, project_name: &str, file: &str) {
         let matcher = generate_binary_matcher_inner(binary_name, project_name);
