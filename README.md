@@ -8,7 +8,6 @@ Here is how it works. You create `~/.config/binup/config.yaml` with the followin
 tools:
   binup:
     project: KonishchevDmitry/binup
-    release_matcher: binup-linux-x64-*
 ```
 
 ... and run `binup install` command to install the specified apps or `binup upgrade` to upgrade already installed apps.
@@ -34,9 +33,11 @@ tools:
     # Release archive pattern:
     # * By default shell-like glob matching is used (https://docs.rs/globset/latest/globset/#syntax)
     # * Pattern started with '~' is treated as regular expression (https://docs.rs/regex/latest/regex/#syntax)
+    #
+    # If it's not specified, the archive will be chosen automatically according to target platform.
     release_matcher: prometheus-*.linux-amd64.tar.gz
 
-    # Binary path to look for inside the release archive. If it's not specified, the tool name will be used.
+    # Binary path to look for inside the release archive. If it's not specified, the tool will try to find it automatically.
     binary_matcher: "*/prometheus"
 
     # Post-install script
