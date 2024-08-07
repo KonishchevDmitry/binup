@@ -147,8 +147,8 @@ struct Installer {
 
     binaries: Vec<PathBuf>,
     matches: Vec<PathBuf>,
-
     temp_path: Option<PathBuf>,
+
     path: PathBuf,
     time: SystemTime,
 }
@@ -176,7 +176,12 @@ impl Installer {
     }
 
     fn finish(mut self, url: &Url) -> EmptyResult {
-        if self.matches.len() != 1 {
+        if self.automatic_matcher && self.matches.is_empty() && self.binaries.len() == 1 {
+            debug!(concat!(
+                "Automatic binary matcher found zero binaries, ",
+                "but the release archive has only one executable, so using it."
+            ));
+        } else if self.matches.len() != 1 {
             if self.automatic_matcher {
                 let message = format!("Unable to automatically choose the proper executable from release ({url}) binaries");
 
@@ -230,30 +235,42 @@ impl Drop for Installer {
 
 impl download::Installer for Installer {
     fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult {
-        // FIXME(konishchev): Rewrite for automatic
-        if mode & 0o100 != 0 {
+        let is_executable = mode & 0o100 != 0;
+
+        if is_executable {
             self.binaries.push(path.to_owned());
         }
 
-        if !self.matcher.matches(path) {
+        if self.matcher.matches(path) {
+            debug!("{path:?} matches binary matcher.");
+
+            self.matches.push(path.to_owned());
+            if self.matches.len() > 1 {
+                return Ok(()); // We'll return error later when collect all matches
+            }
+
+            if !is_executable {
+                return Err!("{path:?} in the archive is not executable");
+            }
+        } else if self.automatic_matcher && is_executable && self.temp_path.is_none() {
+            debug!(concat!(
+                "Got first executable in archive: {:?}. ",
+                "Download it for the case if it's the only one executable in archive.",
+            ), path);
+        } else {
             return Ok(());
         }
 
-        debug!("{path:?} matches binary matcher.");
+        let temp_path = match self.temp_path.as_ref() {
+            Some(path) => path.to_owned(),
+            None => {
+                let file_name = self.path.file_name()
+                    .and_then(|name| name.to_str())
+                    .ok_or_else(|| format!("Got an unexpected install path: {:?}", self.path))?;
 
-        self.matches.push(path.to_owned());
-        if self.matches.len() > 1 {
-            return Ok(()); // We'll return error later when collect all matches
-        }
-
-        if mode & 0o100 == 0 {
-            return Err!("{path:?} in the archive is not executable");
-        }
-
-        let file_name = self.path.file_name()
-            .and_then(|name| name.to_str())
-            .ok_or_else(|| format!("Got an unexpected install path: {:?}", self.path))?;
-        let temp_path = self.path.with_file_name(format!(".{file_name}.{ext}", ext=env!("CARGO_PKG_NAME")));
+                self.path.with_file_name(format!(".{file_name}.{ext}", ext=env!("CARGO_PKG_NAME")))
+            },
+        };
 
         debug!("Downloading {path:?} to {temp_path:?}...");
 

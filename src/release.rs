@@ -53,7 +53,7 @@ pub fn generate_release_matchers_inner(binary_name: &str, project_name: &str, os
         _ => return None,
     };
 
-    let separator_regex = "[-.]";
+    let separator_regex = "[-._]";
     let any_fields_regex = format!("(?:{separator_regex}[^/]+)?");
 
     let platform_regex = format!("(?:{os_regex}[-_]{arch_regex}|{arch_regex}[-_]{os_regex})");
@@ -183,10 +183,53 @@ mod tests {
         ], &[
             (OS::Linux, Arch::X86_64, "dnscrypt-proxy-linux_x86_64-2.1.5.tar.gz"),
 
-            // FIXME(konishchev): Support it?
+            // TODO(konishchev): Support zip archives?
             // (OS::MacOS, Arch::X86_64, "dnscrypt-proxy-macos_x86_64-2.1.5.zip"),
             // (OS::MacOS, Arch::AArch64, "dnscrypt-proxy-macos_arm64-2.1.5.zip"),
         ], 0),
+
+        case("prometheus-nginxlog-exporter", "prometheus-nginxlog-exporter", &[
+            "checksums.txt",
+            "prometheus-nginxlog-exporter_1.11.0_darwin_amd64.tar.gz",
+            "prometheus-nginxlog-exporter_1.11.0_darwin_arm64.tar.gz",
+            "prometheus-nginxlog-exporter_1.11.0_linux_amd64.deb",
+            "prometheus-nginxlog-exporter_1.11.0_linux_amd64.rpm",
+            "prometheus-nginxlog-exporter_1.11.0_linux_amd64.tar.gz",
+            "prometheus-nginxlog-exporter_1.11.0_linux_arm64.deb",
+            "prometheus-nginxlog-exporter_1.11.0_linux_arm64.rpm",
+            "prometheus-nginxlog-exporter_1.11.0_linux_arm64.tar.gz",
+        ], &[
+            (OS::Linux, Arch::X86_64, "prometheus-nginxlog-exporter_1.11.0_linux_amd64.tar.gz"),
+            (OS::MacOS, Arch::X86_64, "prometheus-nginxlog-exporter_1.11.0_darwin_amd64.tar.gz"),
+            (OS::MacOS, Arch::AArch64, "prometheus-nginxlog-exporter_1.11.0_darwin_arm64.tar.gz"),
+        ], 0),
+
+        case("prometheus-node-exporter", "node_exporter", &[
+            "node_exporter-1.8.2.darwin-amd64.tar.gz",
+            "node_exporter-1.8.2.darwin-arm64.tar.gz",
+            "node_exporter-1.8.2.linux-386.tar.gz",
+            "node_exporter-1.8.2.linux-amd64.tar.gz",
+            "node_exporter-1.8.2.linux-arm64.tar.gz",
+            "node_exporter-1.8.2.linux-armv5.tar.gz",
+            "node_exporter-1.8.2.linux-armv6.tar.gz",
+            "node_exporter-1.8.2.linux-armv7.tar.gz",
+            "node_exporter-1.8.2.linux-mips.tar.gz",
+            "node_exporter-1.8.2.linux-mips64.tar.gz",
+            "node_exporter-1.8.2.linux-mips64le.tar.gz",
+            "node_exporter-1.8.2.linux-mipsle.tar.gz",
+            "node_exporter-1.8.2.linux-ppc64.tar.gz",
+            "node_exporter-1.8.2.linux-ppc64le.tar.gz",
+            "node_exporter-1.8.2.linux-riscv64.tar.gz",
+            "node_exporter-1.8.2.linux-s390x.tar.gz",
+            "node_exporter-1.8.2.netbsd-386.tar.gz",
+            "node_exporter-1.8.2.netbsd-amd64.tar.gz",
+            "node_exporter-1.8.2.openbsd-amd64.tar.gz",
+            "sha256sums.txt",
+        ], &[
+            (OS::Linux, Arch::X86_64, "node_exporter-1.8.2.linux-amd64.tar.gz"),
+            (OS::MacOS, Arch::X86_64, "node_exporter-1.8.2.darwin-amd64.tar.gz"),
+            (OS::MacOS, Arch::AArch64, "node_exporter-1.8.2.darwin-arm64.tar.gz"),
+        ], 1),
 
         case("ssservice", "shadowsocks-rust", &[
             "shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz",
@@ -220,38 +263,11 @@ mod tests {
             "shadowsocks-v1.20.3.x86_64-unknown-linux-musl.tar.xz",
             "shadowsocks-v1.20.3.x86_64-unknown-linux-musl.tar.xz.sha256",
         ], &[
-            // FIXME(konishchev): Support?
+            // TODO(konishchev): Always automatically select glibc variant?
             // (OS::Linux, Arch::X86_64, "shadowsocks-v1.20.3.x86_64-unknown-linux-gnu.tar.xz"),
             (OS::MacOS, Arch::X86_64, "shadowsocks-v1.20.3.x86_64-apple-darwin.tar.xz"),
             (OS::MacOS, Arch::AArch64, "shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz"),
         ], 2),
-
-        case("prometheus-node-exporter", "node_exporter", &[
-            "node_exporter-1.8.2.darwin-amd64.tar.gz",
-            "node_exporter-1.8.2.darwin-arm64.tar.gz",
-            "node_exporter-1.8.2.linux-386.tar.gz",
-            "node_exporter-1.8.2.linux-amd64.tar.gz",
-            "node_exporter-1.8.2.linux-arm64.tar.gz",
-            "node_exporter-1.8.2.linux-armv5.tar.gz",
-            "node_exporter-1.8.2.linux-armv6.tar.gz",
-            "node_exporter-1.8.2.linux-armv7.tar.gz",
-            "node_exporter-1.8.2.linux-mips.tar.gz",
-            "node_exporter-1.8.2.linux-mips64.tar.gz",
-            "node_exporter-1.8.2.linux-mips64le.tar.gz",
-            "node_exporter-1.8.2.linux-mipsle.tar.gz",
-            "node_exporter-1.8.2.linux-ppc64.tar.gz",
-            "node_exporter-1.8.2.linux-ppc64le.tar.gz",
-            "node_exporter-1.8.2.linux-riscv64.tar.gz",
-            "node_exporter-1.8.2.linux-s390x.tar.gz",
-            "node_exporter-1.8.2.netbsd-386.tar.gz",
-            "node_exporter-1.8.2.netbsd-amd64.tar.gz",
-            "node_exporter-1.8.2.openbsd-amd64.tar.gz",
-            "sha256sums.txt",
-        ], &[
-            (OS::Linux, Arch::X86_64, "node_exporter-1.8.2.linux-amd64.tar.gz"),
-            (OS::MacOS, Arch::X86_64, "node_exporter-1.8.2.darwin-amd64.tar.gz"),
-            (OS::MacOS, Arch::AArch64, "node_exporter-1.8.2.darwin-arm64.tar.gz"),
-        ], 1),
     )]
     fn release_matcher(binary_name: &str, project_name: &str, assets: &[&str], matches: &[(OS, Arch, &str)], matcher_index: usize) {
         for (os, arch, expected) in matches {
