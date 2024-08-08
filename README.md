@@ -43,7 +43,7 @@ tools:
     # Post-install script
     post: systemctl restart prometheus
 
-# If you have a lot of tools, you'll likely hit GitHub API rate limits for anonymous requests at some moment.
+# If you have a lot of tools, you may hit GitHub API rate limits for anonymous requests at some moment.
 # So it's recommended to obtain GitHub token (https://github.com/settings/tokens) and specify it here.
 # No permissions are required for the token – it's needed just to make API requests non-anonymous.
 github:
