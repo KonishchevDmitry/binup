@@ -45,7 +45,7 @@ jobs:
     - name: Create archive
       id: archive
       run: |
-        set -eux
+        set -eu
 
         name="binup-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}.tar.bz2"
         name="$(tr '[:upper:]' '[:lower:]' <<< "$name")"
