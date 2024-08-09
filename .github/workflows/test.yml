@@ -14,15 +14,27 @@ env:
 
 jobs:
   test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ format('{0}-latest', matrix.os) }}
+    # name: Test on ${{ matrix.os }}
+    # runs-on: ${{ format('{0}-latest', matrix.os) }}
+    name: Test on ${{ matrix.config.os }}
+    runs-on: ${{ format('{0}-latest', matrix.config.os) }}
 
     strategy:
       matrix:
-        os: [ubuntu, macos]
+        # os: [ubuntu, macos]
+        config:
+          - os: ubuntu
+            env:
+              TEST: VALUE
+          - os: macos
+            env: {}
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Test env
+      run: env
+      env: ${{ matrix.config.env }}
 
     - name: Drop caches
       run: rm Cargo.lock
