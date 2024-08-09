@@ -11,39 +11,54 @@ jobs:
     uses: KonishchevDmitry/binup/.github/workflows/test.yml@master
 
   build:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build for ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
 
     strategy:
       matrix:
-        include:
+        config:
           # See https://bit.ly/github-runners for actual runners
-          - os: ubuntu-20.04 # Oldest LTS
-          - os: macos-13     # Intel Mac
-          - os: macos-14     # ARM Mac
+
+          - name: Ubuntu 20.04
+            os: ubuntu-20.04
+
+          - name: Intel MacOS
+            os: macos-13
+
+          - name: ARM MacOS
+            os: macos-14
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Select build target
+      run: .github/select-build-target
 
     - name: Build
       env:
         CARGO_TERM_COLOR: always
       run: cargo build --release --locked
 
-    - name: Construct archive name
-      id: archive_name
-      uses: ASzc/change-string-case-action@v6
-      with:
-        string: ${{ format('binup-{0}-{1}-{2}.tar.bz2', runner.os, runner.arch, github.ref_name) }}
+    - name: Check the binary
+      run: .github/check-binary release
 
     - name: Create archive
-      run: tar -cjf "${{ steps.archive_name.outputs.lowercase }}" -C target/release binup
+      id: archive
+      # FIXME(konishchev): Remove -x
+      run: |
+        set -eux
+
+        name="binup-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}.tar.bz2"
+        name="${name,,}"
+        echo "name=$name" >> "$GITHUB_OUTPUT"
+
+        tar -cjf "$name" -C "target/${CARGO_BUILD_TARGET:-}/release" binup
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.os }}
-        path: ${{ steps.archive_name.outputs.lowercase }}
+        name: ${{ matrix.config.os }}
+        path: ${{ steps.archive.outputs.name }}
         if-no-files-found: error
         compression-level: 0
         retention-days: 1
