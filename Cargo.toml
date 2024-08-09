@@ -13,6 +13,10 @@ license = "GPL-3.0+"
 readme = "README.md"
 edition = "2021"
 
+[profile.release]
+codegen-units = 1
+lto = true
+
 [dependencies]
 bzip2 = "0.4.4"
 chrono = "0.4.38"
