@@ -10,7 +10,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-path="$0"
+path="$1"
 [ "$(uname)" = Linux ] || exit 0
 
 # FIXME(konishchev): Implement
