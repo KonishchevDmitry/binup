@@ -3,8 +3,7 @@
 # Checks built binary
 #
 
-# FIXME(konishchev): Remove -x
-set -eux
+set -eu
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 TARGET" >&2
@@ -14,5 +13,9 @@ fi
 target="$1"
 [ "$(uname)" = Linux ] || exit 0
 
-# FIXME(konishchev): Implement
-ldd "target/${CARGO_BUILD_TARGET:-}/$target/binup"
+dependencies="$(ldd "target/${CARGO_BUILD_TARGET:-}/$target/binup" | sed -r 's/^\s+//')"
+if [ "$dependencies" != "statically linked" ]; then
+    echo "The binary is not statically linked:" >&2
+    echo "$dependencies" >&2
+    exit 1
+fi

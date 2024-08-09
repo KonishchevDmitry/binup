@@ -6,7 +6,7 @@
 set -eu
 
 if [ "$(uname)" = Linux ]; then
-    target="$(uname --machine)-unknown-linux-gnu"
+    target="$(uname --machine)-unknown-linux-musl"
     echo CARGO_BUILD_TARGET="$target" | tee -a "$GITHUB_ENV"
 else
     echo "Use default build target"
