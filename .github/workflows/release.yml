@@ -49,7 +49,7 @@ jobs:
         set -eux
 
         name="binup-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}.tar.bz2"
-        name="${name,,}"
+        name="$(tr '[:upper:]' '[:lower:]' <<< "$name")"
         echo "name=$name" >> "$GITHUB_OUTPUT"
 
         tar -cjf "$name" -C "target/${CARGO_BUILD_TARGET:-}/release" binup
