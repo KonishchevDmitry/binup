@@ -31,8 +31,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Select build target
-      run: .github/select-build-target
+    - name: Configure build target
+      run: .github/configure-build-target
 
     - name: Build
       env:
