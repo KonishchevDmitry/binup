@@ -3,7 +3,8 @@
 # Checks built binary
 #
 
-set -eu
+# FIXME(konishchev): Remove -x
+set -eux
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 TARGET" >&2

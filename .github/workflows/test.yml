@@ -34,7 +34,7 @@ jobs:
       run: cargo build
 
     - name: Check the binary
-      run: .github/check-release debug
+      run: .github/check-binary debug
 
     - name: Test
       run: ./test
