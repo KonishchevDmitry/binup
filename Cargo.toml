@@ -16,7 +16,7 @@ edition = "2021"
 [dependencies]
 bzip2 = "0.4.4"
 chrono = "0.4.38"
-clap = "4.5.13"
+clap = "4.5.14"
 const_format = "0.2.32"
 easy-logging = "1"
 flate2 = "1.0"
@@ -30,8 +30,8 @@ platforms = "3.4.1"
 regex = "1.10.6"
 reqwest = { version = "0.12.5", features = ["blocking"] }
 semver = "1.0.23"
-serde = "1.0.204"
-serde_derive = "1.0.204"
+serde = "1.0.205"
+serde_derive = "1.0.205"
 serde_yaml = "0.9.34"
 shellexpand = "3.1.0"
 tar = "0.4.41"
@@ -46,4 +46,4 @@ lzma-sys = { version = "0.1", features = ["static"] }
 
 [dev-dependencies]
 indoc = "2.0.5"
-rstest = "0.21.0"
+rstest = "0.22.0"
