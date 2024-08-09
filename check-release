@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Checks release binary
+#
+
+set -eu
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 PATH" >&2
+    exit 1
+fi
+
+path="$0"
+[ "$(uname)" = Linux ] || exit 0
+
+# FIXME(konishchev): Implement
+ldd "$path"

@@ -10,6 +10,8 @@ cleanup() {
 }
 
 cargo test
+# FIXME(konishchev): Rewrite
+cargo build && ./check-release target/debug/binup
 
 temp_dir=""
 trap cleanup EXIT

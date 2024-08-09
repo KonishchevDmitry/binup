@@ -182,6 +182,7 @@ dependencies = [
  "itertools",
  "libc",
  "log",
+ "lzma-sys",
  "octocrab",
  "openssl",
  "platforms",
