@@ -8,6 +8,7 @@ set -eu
 if [ "$(uname)" = Linux ]; then
     target="$(uname --machine)-unknown-linux-musl"
     echo CARGO_BUILD_TARGET="$target" | tee -a "$GITHUB_ENV"
+    rustup target add "$target"
 else
     echo "Use default build target"
 fi
