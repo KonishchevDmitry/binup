@@ -14,33 +14,27 @@ env:
 
 jobs:
   test:
-    # name: Test on ${{ matrix.os }}
-    # runs-on: ${{ format('{0}-latest', matrix.os) }}
-    name: Test on ${{ matrix.config.os }}
-    runs-on: ${{ format('{0}-latest', matrix.config.os) }}
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ format('{0}-latest', matrix.os) }}
 
     strategy:
       matrix:
-        # os: [ubuntu, macos]
-        config:
-          - os: ubuntu
-            env:
-              TEST: VALUE
-          - os: macos
-            env: {}
+        os: [ubuntu, macos]
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Test env
-      run: env
-      env: ${{ matrix.config.env }}
+    - name: Select build target
+      run: .github/select-build-target
 
     - name: Drop caches
       run: rm Cargo.lock
 
     - name: Build
       run: cargo build
+
+    - name: Check the binary
+      run: .github/check-release debug
 
     - name: Test
       run: ./test

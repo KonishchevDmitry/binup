@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# Checks release binary
+# Checks built binary
 #
 
 set -eu
 
 if [ $# -ne 1 ]; then
-    echo "Usage: $0 PATH" >&2
+    echo "Usage: $0 TARGET" >&2
     exit 1
 fi
 
-path="$1"
+target="$1"
 [ "$(uname)" = Linux ] || exit 0
 
 # FIXME(konishchev): Implement
-ldd "$path"
+ldd "target/${CARGO_BUILD_TARGET:-}/$target/binup"

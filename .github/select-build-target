@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# Selects build target
+#
+
+set -eu
+
+if [ "$(uname)" = Linux ]; then
+    target="$(uname --machine)-unknown-linux-gnu"
+    echo CARGO_BUILD_TARGET="$target" | tee -a "$GITHUB_ENV"
+else
+    echo "Use default build target"
+fi
