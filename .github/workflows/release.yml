@@ -52,7 +52,7 @@ jobs:
         echo "name=$name" >> "$GITHUB_OUTPUT"
 
         build_directory="target/${CARGO_BUILD_TARGET:-}/release"
-        chown root:root "$build_directory/binup"
+        sudo chown 0:0 "$build_directory/binup"
 
         tar -cjf "$name" -C "$build_directory" binup
 

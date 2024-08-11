@@ -101,11 +101,3 @@ for command in install "install --force" upgrade; do
         fi
     )
 done
-
-# FIXME(konishchev): Drop it
-set -x
-sudo cat /etc/passwd
-sudo cat /etc/group
-touch test
-sudo chown 0:0 test
-ls -la test
