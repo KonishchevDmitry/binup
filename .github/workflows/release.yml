@@ -51,7 +51,10 @@ jobs:
         name="$(tr '[:upper:]' '[:lower:]' <<< "$name")"
         echo "name=$name" >> "$GITHUB_OUTPUT"
 
-        tar -cjf "$name" -C "target/${CARGO_BUILD_TARGET:-}/release" binup
+        build_directory="target/${CARGO_BUILD_TARGET:-}/release"
+        chown root:root "$build_directory/binup"
+
+        tar -cjf "$name" -C "$build_directory" binup
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
