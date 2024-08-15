@@ -19,8 +19,8 @@ jobs:
         config:
           # See https://bit.ly/github-runners for actual runners
 
-          - name: Ubuntu 20.04
-            os: ubuntu-20.04
+          - name: Linux
+            os: ubuntu-latest
 
           - name: Intel MacOS
             os: macos-13
