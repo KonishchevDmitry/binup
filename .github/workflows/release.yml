@@ -11,12 +11,12 @@ jobs:
     uses: KonishchevDmitry/binup/.github/workflows/test.yml@master
 
   build:
-    name: Build for ${{ matrix.config.name }}
-    runs-on: ${{ matrix.config.os }}
+    name: Build for ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
-        config:
+        include:
           # See https://bit.ly/github-runners for actual runners
 
           - name: Linux
@@ -59,7 +59,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.config.os }}
+        name: ${{ matrix.os }}
         path: ${{ steps.archive.outputs.name }}
         if-no-files-found: error
         compression-level: 0
