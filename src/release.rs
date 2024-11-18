@@ -7,8 +7,10 @@ use platforms::{Arch, OS};
 use regex::{self, Regex};
 use url::Url;
 
+use crate::core::GenericResult;
 use crate::matcher::Matcher;
 use crate::project::Project;
+use crate::util;
 use crate::version::ReleaseVersion;
 
 pub struct Release {
@@ -25,6 +27,51 @@ impl Release {
             assets,
         }
     }
+
+    pub fn select_asset(&self, binary_name: &str, matcher: Option<&Matcher>) -> GenericResult<&Asset> {
+        if self.assets.is_empty() {
+            return Err!("The latest release of {project} ({version}) has no assets",
+                project=self.project.full_name(), version=self.version);
+        }
+
+        if let Some(matcher) = matcher {
+            let assets: Vec<_> = self.assets.iter()
+                .filter(|asset| matcher.matches(&asset.name))
+                .collect();
+
+            return Ok(match assets.len() {
+                0 => {
+                    return Err!(
+                        "The specified release matcher matches none of the following assets:{}",
+                        util::format_list(self.assets.iter().map(|asset| &asset.name)));
+                },
+                1 => assets[0],
+                _ => {
+                    return Err!(
+                        "The specified release matcher matches multiple assets:{}",
+                        util::format_list(self.assets.iter().map(|asset| &asset.name)));
+                }
+            });
+        }
+
+        let matchers = generate_release_matchers(binary_name, &self.project.name, consts::OS, consts::ARCH)
+            .unwrap_or_default();
+
+        for matcher in matchers {
+            let assets: Vec<_> = self.assets.iter()
+                .filter(|asset| matcher.matches(&asset.name))
+                .collect();
+
+            if assets.len() == 1 {
+                return Ok(assets[0]);
+            }
+        }
+
+        Err!(concat!(
+            "Unable to automatically choose the proper release from the following assets:{}\n\n",
+            "Release matcher should be specifed.",
+        ), util::format_list(self.assets.iter().map(|asset| &asset.name)))
+    }
 }
 
 pub struct Asset {
@@ -33,11 +80,7 @@ pub struct Asset {
     pub url: Url,
 }
 
-pub fn generate_release_matchers(binary_name: &str, release: &Release) -> Vec<Matcher> {
-    generate_release_matchers_inner(binary_name, &release.project.name, consts::OS, consts::ARCH).unwrap_or_default()
-}
-
-pub fn generate_release_matchers_inner(binary_name: &str, project_name: &str, os: &str, arch: &str) -> Option<Vec<Matcher>> {
+fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, arch: &str) -> Option<Vec<Matcher>> {
     let os = OS::from_str(os).ok()?;
     let arch = Arch::from_str(arch).ok()?;
 
@@ -111,7 +154,7 @@ mod tests {
         let arch = consts::ARCH;
 
         assert!(
-            generate_release_matchers_inner("", "", os, arch).is_some(),
+            generate_release_matchers("", "", os, arch).is_some(),
             "Unsupported OS/architecture: {os}/{arch}",
         );
     }
@@ -271,7 +314,7 @@ mod tests {
     )]
     fn release_matcher(binary_name: &str, project_name: &str, assets: &[&str], matches: &[(OS, Arch, &str)], matcher_index: usize) {
         for (os, arch, expected) in matches {
-            let matchers = generate_release_matchers_inner(binary_name, project_name, os.as_str(), arch.as_str()).unwrap();
+            let matchers = generate_release_matchers(binary_name, project_name, os.as_str(), arch.as_str()).unwrap();
 
             for (index, matcher) in matchers[..matcher_index].iter().enumerate() {
                 println!("#{index}: {matcher}");

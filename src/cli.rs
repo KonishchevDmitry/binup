@@ -14,10 +14,13 @@ pub struct CliArgs {
 }
 
 pub enum Action {
+    List {
+        full: bool,
+    },
     Install {
         mode: Mode,
         tools: Option<Vec<String>>,
-    }
+    },
 }
 
 pub fn parse_args() -> GenericResult<CliArgs> {
@@ -41,6 +44,14 @@ pub fn parse_args() -> GenericResult<CliArgs> {
             .short('v').long("verbose")
             .action(ArgAction::Count)
             .help("Set verbosity level"))
+
+        .subcommand(Command::new("list")
+            .about("List all configured tools")
+            .args([
+                Arg::new("full").short('f').long("full")
+                    .help("Show full information including changelog URL")
+                    .action(ArgAction::SetTrue),
+            ]))
 
         .subcommand(Command::new("install")
             .about("Install all or only specified tools")
@@ -71,6 +82,10 @@ pub fn parse_args() -> GenericResult<CliArgs> {
     let (command, matches) = matches.subcommand().unwrap();
 
     let action = match command {
+        "list" => Action::List {
+            full: matches.get_flag("full"),
+        },
+
         "install" | "upgrade" => {
             let mode = match command {
                 "install" => Mode::Install {
@@ -84,6 +99,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
 
             Action::Install {mode, tools}
         }
+
         _ => unreachable!(),
     };
 

@@ -5,9 +5,11 @@ mod config;
 mod download;
 mod github;
 mod install;
+mod list;
 mod matcher;
 mod project;
 mod release;
+mod tool;
 mod util;
 mod version;
 
@@ -51,6 +53,7 @@ fn run(config_path: &Path, action: Action) -> EmptyResult {
         "Error while reading {:?} configuration file: {}", config_path, e))?;
 
     match action {
+        Action::List {full} => crate::list::list(&config, full),
         Action::Install {mode, tools} => crate::install::install(&config, mode, tools),
     }
 }

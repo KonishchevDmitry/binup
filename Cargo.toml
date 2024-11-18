@@ -18,6 +18,7 @@ codegen-units = 1
 lto = true
 
 [dependencies]
+ansi_term = "0.12.1"
 bzip2 = "0.4.4"
 chrono = "0.4.38"
 clap = "4.5.20"
@@ -26,6 +27,7 @@ easy-logging = "1"
 flate2 = "1.0"
 globset = "0.4.15"
 http = "1.1.0"
+is-terminal = "0.4.13"
 itertools = "0.13.0"
 octocrab = "0.41.1"
 libc = "0.2.159"
@@ -38,6 +40,7 @@ serde = "1.0.210"
 serde_derive = "1.0.210"
 serde_yaml = "0.9.34"
 shellexpand = "3.1.0"
+tabled = { version = "0.16.0", features = ["ansi"] }
 tar = "0.4.42"
 tokio = "1"
 url = "2.5.2"

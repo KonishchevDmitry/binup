@@ -1,23 +1,21 @@
-use std::fmt::Display;
 use std::fs::{self, OpenOptions};
-use std::io::{self, ErrorKind, Read};
+use std::io::{self, Read};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
 use easy_logging::GlobalContext;
-use itertools::Itertools;
 use log::{Level, debug, info, warn, error};
 use semver::Version;
 use url::Url;
 
 use crate::config::{Config, Tool};
-use crate::core::{EmptyResult, GenericResult};
+use crate::core::EmptyResult;
 use crate::download;
 use crate::github;
 use crate::matcher::Matcher;
-use crate::release::{self, Release, Asset};
+use crate::release::{self, Release};
 use crate::util;
 use crate::version::{self, ReleaseVersion};
 
@@ -60,7 +58,7 @@ pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> Empty
 
 fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: &Path) -> EmptyResult {
     let install_path = path.join(name);
-    let tool = check_tool(&install_path)?;
+    let tool = crate::tool::check(&install_path)?;
 
     match (mode, tool.is_some()) {
         (Mode::Install{force: false}, true) => {
@@ -84,7 +82,7 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
         debug!("* {}", asset.name)
     }
 
-    let asset = select_asset(name, &release, spec.release_matcher.as_ref())?;
+    let asset = release.select_asset(name, spec.release_matcher.as_ref())?;
     let release_time: SystemTime = asset.time.into();
     let current_version = tool.as_ref().and_then(|_|
         version::get_binary_version(&install_path));
@@ -105,7 +103,7 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
 
         Mode::Upgrade => {
             if match (tool.as_ref(), current_version.as_ref(), &release_version) {
-                (_, Some(current_version), ReleaseVersion::Version(lastest_version)) => current_version >= lastest_version,
+                (_, Some(current_version), ReleaseVersion::Version(latest_version)) => current_version >= latest_version,
                 (Some(tool), _, _) if tool.modify_time == release_time => true,
                 _ => false,
             } {
@@ -190,13 +188,13 @@ impl Installer {
                 } else {
                     return Err!(
                         "{message}:{}\n\nBinary matcher should be specified.",
-                        format_list(self.binaries.iter().map(|path| path.display())));
+                        util::format_list(self.binaries.iter().map(|path| path.display())));
                 }
             } else {
                 if !self.matches.is_empty() {
                     return Err!(
                         "The specified binary matcher matches multiple release ({url}) files:{}",
-                        format_list(self.matches.iter().map(|path| path.display())));
+                        util::format_list(self.matches.iter().map(|path| path.display())));
                 }
 
                 let message = format!("The specified binary matcher matches none of release ({url}) files");
@@ -206,7 +204,7 @@ impl Installer {
                 } else {
                     return Err!(
                         "{message}. The release has the following executable binaries:{}",
-                        format_list(self.binaries.iter().map(|path| path.display())));
+                        util::format_list(self.binaries.iter().map(|path| path.display())));
                 }
             }
         }
@@ -292,68 +290,6 @@ impl download::Installer for Installer {
     }
 }
 
-struct ToolState {
-    modify_time: SystemTime,
-}
-
-fn check_tool(path: &Path) -> GenericResult<Option<ToolState>> {
-    debug!("Checking {path:?}...");
-
-    let modify_time = match fs::metadata(path).and_then(|metadata| metadata.modified()) {
-        Ok(metadata) => metadata,
-        Err(err) if err.kind() == ErrorKind::NotFound => {
-            return Ok(None);
-        },
-        Err(err) => {
-            return Err!("Failed to stat {path:?}: {err}");
-        },
-    };
-
-    Ok(Some(ToolState {modify_time}))
-}
-
-fn select_asset<'a>(binary_name: &str, release: &'a Release, matcher: Option<&Matcher>) -> GenericResult<&'a Asset> {
-    if release.assets.is_empty() {
-        return Err!("The latest release of {project} ({version}) has no assets",
-            project=release.project.full_name(), version=release.version);
-    }
-
-    if let Some(matcher) = matcher {
-        let assets: Vec<_> = release.assets.iter()
-            .filter(|asset| matcher.matches(&asset.name))
-            .collect();
-
-        return Ok(match assets.len() {
-            0 => {
-                return Err!(
-                    "The specified release matcher matches none of the following assets:{}",
-                    format_list(release.assets.iter().map(|asset| &asset.name)));
-            },
-            1 => assets[0],
-            _ => {
-                return Err!(
-                    "The specified release matcher matches multiple assets:{}",
-                    format_list(assets.iter().map(|asset| &asset.name)));
-            }
-        });
-    }
-
-    for matcher in release::generate_release_matchers(binary_name, release) {
-        let assets: Vec<_> = release.assets.iter()
-            .filter(|asset| matcher.matches(&asset.name))
-            .collect();
-
-        if assets.len() == 1 {
-            return Ok(assets[0]);
-        }
-    }
-
-    Err!(concat!(
-        "Unable to automatically choose the proper release from the following assets:{}\n\n",
-        "Release matcher should be specifed.",
-    ), format_list(release.assets.iter().map(|asset| &asset.name)))
-}
-
 fn run_post_script(script: &str) -> EmptyResult {
     debug!("Executing post-install script:{}", util::format_multiline(script));
 
@@ -374,10 +310,6 @@ fn run_post_script(script: &str) -> EmptyResult {
     }
 
     Ok(())
-}
-
-fn format_list<T: Display, I: Iterator<Item = T>>(mut iter: I) -> String {
-    "\n* ".to_owned() + &iter.join("\n* ")
 }
 
 fn format_changelog(changelog: &Url, from: Option<&Version>, to: &ReleaseVersion) -> String {

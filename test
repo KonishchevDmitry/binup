@@ -69,11 +69,17 @@ $github_config
 EOF
 )
 
+run() {
+    cargo run -- --config "$temp_dir/config.yaml" "$@"
+}
+
+run list
+
 for command in install "install --force" upgrade; do
     cp -a "$temp_dir/new-release-mock" "$temp_dir/bin/up-to-date"
     cp -a "$temp_dir/old-release-mock" "$temp_dir/custom-bin/upgradable"
 
-    cargo run -- --config "$temp_dir/config.yaml" $command
+    run $command
 
     (
         cd "$temp_dir"
@@ -101,3 +107,5 @@ for command in install "install --force" upgrade; do
         fi
     )
 done
+
+run list --full
