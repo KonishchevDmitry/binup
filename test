@@ -70,8 +70,11 @@ EOF
 )
 
 run() {
-    cargo run -- --config "$temp_dir/config.yaml" "$@"
+    cargo run --quiet -- --config "$temp_dir/config.yaml" "$@"
 }
+
+# Test work with missing default config
+cargo run --quiet -- list
 
 run list
 

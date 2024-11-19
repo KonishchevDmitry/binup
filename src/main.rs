@@ -35,7 +35,7 @@ fn main() {
         process::exit(1);
     }
 
-    if let Err(err) = run(&args.config_path, args.action) {
+    if let Err(err) = run(&args.config_path, args.custom_config, args.action) {
         let message = err.to_string();
 
         if message.contains('\n') || message.ends_with('.') {
@@ -48,8 +48,8 @@ fn main() {
     }
 }
 
-fn run(config_path: &Path, action: Action) -> EmptyResult {
-    let config = Config::load(config_path).map_err(|e| format!(
+fn run(config_path: &Path, custom_config: bool, action: Action) -> EmptyResult {
+    let config = Config::load(config_path, custom_config).map_err(|e| format!(
         "Error while reading {:?} configuration file: {}", config_path, e))?;
 
     match action {

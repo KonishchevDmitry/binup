@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -18,6 +19,7 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_path")]
     pub path: PathBuf,
 
+    #[serde(default)]
     #[validate(nested)]
     pub tools: BTreeMap<String, Tool>,
 
@@ -26,8 +28,18 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load(path: &Path) -> GenericResult<Config> {
-        let config: Config = serde_yaml::from_reader(File::open(path)?)?;
+    pub fn load(path: &Path, custom: bool) -> GenericResult<Config> {
+        let reader: Box<dyn Read> = match File::open(path) {
+            Ok(file) => Box::new(file),
+            Err(err) => {
+                if custom || err.kind() != ErrorKind::NotFound {
+                    return Err(err.into());
+                }
+                Box::new("{}".as_bytes())
+            },
+        };
+
+        let config: Config = serde_yaml::from_reader(reader)?;
         config.validate()?;
         Ok(config)
     }

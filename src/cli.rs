@@ -10,6 +10,7 @@ use crate::install::Mode;
 pub struct CliArgs {
     pub log_level: Level,
     pub config_path: PathBuf,
+    pub custom_config: bool,
     pub action: Action,
 }
 
@@ -76,8 +77,10 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         _ => return Err!("Invalid verbosity level"),
     };
 
-    let config_path = matches.get_one("config").cloned().unwrap_or_else(||
-        PathBuf::from(shellexpand::tilde(DEFAULT_CONFIG_PATH).to_string()));
+    let (config_path, custom_config) = match matches.get_one("config").cloned() {
+        Some(path) => (path, true),
+        None => (PathBuf::from(shellexpand::tilde(DEFAULT_CONFIG_PATH).to_string()), false),
+    };
 
     let (command, matches) = matches.subcommand().unwrap();
 
@@ -103,5 +106,5 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         _ => unreachable!(),
     };
 
-    Ok(CliArgs {log_level, config_path, action})
+    Ok(CliArgs {log_level, config_path, custom_config, action})
 }
