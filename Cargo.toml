@@ -21,7 +21,7 @@ lto = true
 ansi_term = "0.12.1"
 bzip2 = "0.4.4"
 chrono = "0.4.38"
-clap = "4.5.20"
+clap = "4.5.21"
 const_format = "0.2.33"
 easy-logging = "1"
 flate2 = "1.0"
@@ -29,22 +29,22 @@ globset = "0.4.15"
 http = "1.1.0"
 is-terminal = "0.4.13"
 itertools = "0.13.0"
-octocrab = "0.41.1"
-libc = "0.2.159"
+octocrab = "0.42.0"
+libc = "0.2.164"
 log = "0.4.22"
-platforms = "3.4.1"
-regex = "1.11.0"
-reqwest = { version = "0.12.8", features = ["blocking"] }
+platforms = "3.5.0"
+regex = "1.11.1"
+reqwest = { version = "0.12.9", features = ["blocking"] }
 semver = "1.0.23"
-serde = "1.0.210"
-serde_derive = "1.0.210"
+serde = "1.0.215"
+serde_derive = "1.0.215"
 serde_yaml = "0.9.34"
 shellexpand = "3.1.0"
 tabled = { version = "0.16.0", features = ["ansi"] }
-tar = "0.4.42"
+tar = "0.4.43"
 tokio = "1"
-url = "2.5.2"
-validator = { version = "0.18.1", features = ["derive"] }
+url = "2.5.3"
+validator = { version = "0.19.0", features = ["derive"] }
 xz2 = "0.1.7"
 
 # Force static linking
