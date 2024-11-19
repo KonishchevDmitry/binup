@@ -13,7 +13,7 @@ use url::Url;
 use crate::config::{Config, Tool};
 use crate::core::EmptyResult;
 use crate::download;
-use crate::github;
+use crate::github::Github;
 use crate::matcher::Matcher;
 use crate::release::{self, Release};
 use crate::util;
@@ -71,7 +71,7 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
         _ => {},
     }
 
-    let release = github::get_release(&config.github, &spec.project).map_err(|e| format!(
+    let release = Github::new(&config.github)?.get_release(&spec.project).map_err(|e| format!(
         "Failed to get latest release info for {}: {e}", spec.project))?;
 
     let release_version = &release.version;

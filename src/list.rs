@@ -5,11 +5,11 @@ use ansi_term::Color;
 use is_terminal::IsTerminal;
 use log::{debug, error};
 use tabled::{Table, Tabled};
-use tabled::settings::{Disable, Height, object::{Rows, Columns}, style::Style};
+use tabled::settings::{Alignment, Disable, Height, object::{Rows, Columns}, style::Style};
 
 use crate::config::{Config, Tool};
 use crate::core::EmptyResult;
-use crate::github;
+use crate::github::Github;
 use crate::version::{self, ReleaseVersion};
 
 pub fn list(config: &Config, full: bool) -> EmptyResult {
@@ -18,11 +18,12 @@ pub fn list(config: &Config, full: bool) -> EmptyResult {
     }
 
     let mut rows = Vec::new();
+    let github = Github::new(&config.github)?;
     let colored = std::io::stdout().is_terminal();
 
     for (name, tool) in &config.tools {
         debug!("Checking {name}...");
-        rows.push(list_tool(config, name, tool, colored));
+        rows.push(list_tool(config, name, tool, &github, colored));
     }
 
     let mut table = Table::new(&rows);
@@ -31,6 +32,7 @@ pub fn list(config: &Config, full: bool) -> EmptyResult {
     if colored {
         table.modify(Rows::first(), tabled::settings::Color::BOLD);
     }
+    table.modify(Columns::new(1..=2), Alignment::center());
     if !full {
         table.with(Disable::column(Columns::single(3)));
     }
@@ -54,7 +56,7 @@ struct ToolInfo {
     changelog: String,
 }
 
-fn list_tool(config: &Config, name: &str, spec: &Tool, colored: bool) -> ToolInfo {
+fn list_tool(config: &Config, name: &str, spec: &Tool, github: &Github, colored: bool) -> ToolInfo {
     let install_path = spec.path.as_ref().unwrap_or(&config.path).join(name);
 
     let tool = crate::tool::check(&install_path).unwrap_or_else(|e| {
@@ -72,8 +74,7 @@ fn list_tool(config: &Config, name: &str, spec: &Tool, colored: bool) -> ToolInf
         changelog: spec.changelog.as_ref().map(ToString::to_string).unwrap_or_default(),
     };
 
-    // FIXME(konishchev): Connection pool
-    let release = match github::get_release(&config.github, &spec.project) {
+    let release = match github.get_release(&spec.project) {
         Ok(release) => release,
         Err(err) => {
             error!("{name}: Failed to get latest release info for {}: {err}.", spec.project);
