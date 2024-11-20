@@ -40,7 +40,10 @@ tools:
     # Binary path to look for inside the release archive. If it's not specified, the tool will try to find it automatically.
     binary_matcher: "*/prometheus"
 
-    # Post-install script
+    # Path where to install this specific tool to
+    path: ~/bin
+
+    # Post-install command
     post: systemctl restart prometheus
 
 # If you have a lot of tools, you may hit GitHub API rate limits for anonymous requests at some moment.
