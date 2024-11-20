@@ -1,11 +1,58 @@
 use std::fs;
 use std::io::ErrorKind;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use log::debug;
+use nondestructive::yaml::MappingMut;
+use serde::Deserialize;
+use url::Url;
+use validator::Validate;
 
-use crate::core::GenericResult;
+use crate::core::{EmptyResult, GenericResult};
+use crate::matcher::Matcher;
+use crate::util;
+
+#[derive(Deserialize, Validate, PartialEq, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ToolSpec {
+    #[validate(length(min = 1))]
+    pub project: String,
+    pub changelog: Option<Url>,
+
+    pub release_matcher: Option<Matcher>,
+    pub binary_matcher: Option<Matcher>,
+
+    #[serde(default, deserialize_with = "util::deserialize_optional_path")]
+    pub path: Option<PathBuf>,
+    pub post: Option<String>,
+}
+
+impl ToolSpec {
+    pub fn serialize(&self, map: &mut MappingMut) -> EmptyResult {
+        map.clear();
+        map.insert_str("project", &self.project);
+
+        if let Some(ref changelog) = self.changelog {
+            map.insert_str("changelog", changelog.as_str());
+        }
+        if let Some(ref release_matcher) = self.release_matcher {
+            map.insert_str("release_matcher", release_matcher.to_string());
+        }
+        if let Some(ref binary_matcher) = self.binary_matcher {
+            map.insert_str("binary_matcher", binary_matcher.to_string());
+        }
+        if let Some(ref path) = self.path {
+            let path = path.to_str().ok_or_else(|| format!("Invalid path: {path:?}"))?;
+            map.insert_str("path", path);
+        }
+        if let Some(ref post) = self.post {
+            map.insert_str("post", post);
+        }
+
+        Ok(())
+    }
+}
 
 pub struct ToolState {
     pub modify_time: SystemTime,

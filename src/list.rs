@@ -7,9 +7,10 @@ use log::{debug, error};
 use tabled::{Table, Tabled};
 use tabled::settings::{Alignment, Disable, Height, object::{Rows, Columns}, style::Style};
 
-use crate::config::{Config, Tool};
+use crate::config::Config;
 use crate::core::EmptyResult;
 use crate::github::Github;
+use crate::tool::ToolSpec;
 use crate::version::{self, ReleaseVersion};
 
 pub fn list(config: &Config, full: bool) -> EmptyResult {
@@ -56,8 +57,8 @@ struct ToolInfo {
     changelog: String,
 }
 
-fn list_tool(config: &Config, name: &str, spec: &Tool, github: &Github, colored: bool) -> ToolInfo {
-    let install_path = spec.path.as_ref().unwrap_or(&config.path).join(name);
+fn list_tool(config: &Config, name: &str, spec: &ToolSpec, github: &Github, colored: bool) -> ToolInfo {
+    let install_path = spec.path.as_ref().unwrap_or(&config.install_path).join(name);
 
     let tool = crate::tool::check(&install_path).unwrap_or_else(|e| {
         error!("{name}: {e}.");
