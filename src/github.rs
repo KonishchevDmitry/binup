@@ -13,7 +13,7 @@ use crate::project::Project;
 use crate::release::{Release, Asset};
 use crate::util;
 
-#[derive(Default, Deserialize)]
+#[derive(Default, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct GithubConfig {
     token: Option<String>,
@@ -88,7 +88,7 @@ impl Github {
     }
 }
 
-fn parse_project_name(full_name: &str) -> GenericResult<Project> {
+pub fn parse_project_name(full_name: &str) -> GenericResult<Project> {
     let mut parts = full_name.split('/');
 
     let owner = parts.next();
