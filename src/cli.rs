@@ -1,11 +1,15 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgAction, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::parser::ValuesRef;
 use const_format::formatcp;
 use log::Level;
+use url::Url;
 
 use crate::core::GenericResult;
+use crate::matcher::Matcher;
 use crate::install::Mode;
+use crate::tool::ToolSpec;
 
 pub struct CliArgs {
     pub log_level: Level,
@@ -20,8 +24,19 @@ pub enum Action {
     },
     Install {
         mode: Mode,
-        tools: Option<Vec<String>>,
+        names: Vec<String>,
     },
+    InstallFromSpec {
+        name: Option<String>,
+        spec: ToolSpec,
+        force: bool,
+    },
+}
+
+macro_rules! long_about {
+    ($text:expr) => {{
+        textwrap::fill(indoc::indoc!($text).trim_matches('\n'), 100)
+    }}
 }
 
 pub fn parse_args() -> GenericResult<CliArgs> {
@@ -56,17 +71,58 @@ pub fn parse_args() -> GenericResult<CliArgs> {
 
         .subcommand(Command::new("install")
             .about("Install all or only specified tools")
+            .long_about(long_about!("
+                When no arguments is specified, installs all the tools from the configuration file which aren't
+                installed yet. When tool name(s) is specified, installs this specific tool(s). When --project is
+                specified, adds a new tool to the configuration file and installs it.
+            "))
             .args([
-                Arg::new("force").short('f').long("force")
-                    .help("Force installation even if tool is already installed")
-                    .action(ArgAction::SetTrue),
+                Arg::new("name")
+                    .value_name("NAME")
+                    .action(ArgAction::Append)
+                    .help("Tool name"),
 
-                Arg::new("NAME").help("Tool name").action(ArgAction::Append),
+                Arg::new("force").short('f').long("force")
+                    .action(ArgAction::SetTrue)
+                    .help("Force installation even if tool is already installed"),
+
+                Arg::new("project").short('p').long("project")
+                    .value_name("NAME")
+                    .help("GitHub project to get the release from"),
+
+                Arg::new("changelog").short('c').long("changelog")
+                    .value_name("URL")
+                    .requires("project")
+                    .help("Project changelog URL"),
+
+                Arg::new("release_matcher").short('r').long("release-matcher")
+                    .value_name("PATTERN")
+                    .requires("project")
+                    .help("Release archive pattern"),
+
+                Arg::new("binary_matcher").short('b').long("binary-matcher")
+                    .value_name("PATTERN")
+                    .requires("project")
+                    .help("Binary path to look for inside the release archive"),
+
+                Arg::new("path").short('d').long("path")
+                    .value_name("PATH")
+                    .requires("project")
+                    .value_parser(value_parser!(PathBuf))
+                    .help("Path where to install this specific tool to"),
+
+                Arg::new("post").short('s').long("post")
+                    .value_name("COMMAND")
+                    .requires("project")
+                    .help("Post-install command"),
             ]))
 
         .subcommand(Command::new("upgrade")
             .about("Upgrade all or only specified tools")
-            .arg(Arg::new("NAME").help("Tool name").action(ArgAction::Append)))
+            .arg(Arg::new("name")
+                .value_name("NAME")
+                .action(ArgAction::Append)
+                .help("Tool name")))
 
         .get_matches();
 
@@ -89,6 +145,22 @@ pub fn parse_args() -> GenericResult<CliArgs> {
             full: matches.get_flag("full"),
         },
 
+        "install" if matches.contains_id("project") => {
+            let name = matches.get_many("name").map(|mut names: ValuesRef<'_, String>| -> GenericResult<String> {
+                let name = names.next().unwrap().clone();
+                if names.next().is_some() {
+                    return Err!("A single tool name must be specified when project is specified");
+                }
+                Ok(name)
+            }).transpose()?;
+
+            Action::InstallFromSpec {
+                name,
+                spec: get_tool_spec(matches)?,
+                force: matches.get_flag("force"),
+            }
+        },
+
         "install" | "upgrade" => {
             let mode = match command {
                 "install" => Mode::Install {
@@ -98,13 +170,35 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                 _ => unreachable!(),
             };
 
-            let tools = matches.get_many::<String>("NAME").map(|tools| tools.cloned().collect());
-
-            Action::Install {mode, tools}
+            let names = matches.get_many("name").map(|tools| tools.cloned().collect()).unwrap_or_default();
+            Action::Install {mode, names}
         }
 
         _ => unreachable!(),
     };
 
     Ok(CliArgs {log_level, config_path, custom_config, action})
+}
+
+fn get_tool_spec(matches: &ArgMatches) -> GenericResult<ToolSpec> {
+    let changelog = matches.get_one("changelog").map(|url: &String| {
+        Url::parse(url).map_err(|e| format!("Invalid changelog URL: {e}"))
+    }).transpose()?;
+
+    let release_matcher = matches.get_one("release_matcher").map(|pattern: &String| {
+        Matcher::new(pattern).map_err(|e| format!("Invalid release matcher: {e}"))
+    }).transpose()?;
+
+    let binary_matcher = matches.get_one("binary_matcher").map(|pattern: &String| {
+        Matcher::new(pattern).map_err(|e| format!("Invalid binary matcher: {e}"))
+    }).transpose()?;
+
+    Ok(ToolSpec {
+        project: matches.get_one("project").cloned().unwrap(),
+        changelog,
+        release_matcher,
+        binary_matcher,
+        path: matches.get_one("path").cloned(),
+        post: matches.get_one("post").cloned(),
+    })
 }

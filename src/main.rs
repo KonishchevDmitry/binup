@@ -49,11 +49,12 @@ fn main() {
 }
 
 fn run(config_path: &Path, custom_config: bool, action: Action) -> EmptyResult {
-    let config = Config::load(config_path, custom_config).map_err(|e| format!(
+    let mut config = Config::load(config_path, custom_config).map_err(|e| format!(
         "Error while reading {:?} configuration file: {}", config_path, e))?;
 
     match action {
-        Action::List {full} => crate::list::list(&config, full),
-        Action::Install {mode, tools} => crate::install::install(&config, mode, tools),
+        Action::List {full} => list::list(&config, full),
+        Action::Install {mode, names} => install::install(&config, mode, names),
+        Action::InstallFromSpec {name, spec, force} => install::install_spec(&mut config, name, spec, force),
     }
 }
