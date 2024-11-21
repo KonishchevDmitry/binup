@@ -1,8 +1,10 @@
 use std::fmt::Display;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use const_format::formatcp;
 use itertools::Itertools;
+use log::debug;
 use serde::Deserialize;
 use serde::de::{Deserializer, Error};
 
@@ -22,6 +24,37 @@ pub fn format_multiline(text: &str) -> String {
         format!("\n{text}")
     } else {
         format!(" {text}")
+    }
+}
+
+pub fn confirm<S: Display>(message: S) -> bool {
+    loop {
+        if let Err(err) = write!(io::stderr(), "{} (y/n): ", message)
+            .and_then(|_| io::stderr().flush()) {
+            debug!("Failed to question the user: {err}. Assume no.");
+            return false;
+        }
+
+        let mut answer = String::new();
+
+        match io::stdin().read_line(&mut answer) {
+            Ok(size) => if size == 0 {
+                let _ = writeln!(io::stderr());
+                debug!("Failed to question the user: stdin is closed. Assume no.");
+                return false;
+            },
+            Err(err) => {
+                let _ = writeln!(io::stderr());
+                debug!("Failed to question the user: {err}. Assume no.");
+                return false;
+            }
+        }
+
+        match answer.trim() {
+            "y" | "yes" => return true,
+            "n" | "no" => return false,
+            _ => {},
+        }
     }
 }
 
