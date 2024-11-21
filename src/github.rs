@@ -13,7 +13,7 @@ use crate::project::Project;
 use crate::release::{Release, Asset};
 use crate::util;
 
-#[derive(Default, Deserialize, PartialEq)]
+#[derive(Clone, Default, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct GithubConfig {
     token: Option<String>,
