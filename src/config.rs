@@ -21,7 +21,7 @@ pub struct Config {
     source: Option<ConfigSource>,
 
     #[serde(rename = "path", default = "default_install_path", deserialize_with = "util::deserialize_path")]
-    pub install_path: PathBuf,
+    pub path: PathBuf,
 
     #[serde(default)]
     #[validate(nested)]
@@ -53,7 +53,11 @@ impl Config {
         Ok(config)
     }
 
-    pub fn edit<F: FnOnce(&mut Config, &mut Document) -> EmptyResult>(&mut self, edit: F) -> EmptyResult {
+    pub fn edit<E, P>(&mut self, edit: E, process: P) -> EmptyResult
+        where
+            E: FnOnce(&mut Config, &mut Document) -> EmptyResult,
+            P: FnOnce(&Config) -> EmptyResult
+    {
         let error_prefix = "Failed to edit the configuration file: its current format is not supported by the underlaying library.";
 
         let mut expected_config = self.clone();
@@ -72,6 +76,12 @@ impl Config {
             return Err!("{error_prefix} Got the following unexpected config:\n{result}");
         }
 
+        source.data = result.into_bytes();
+        config.source.replace(source);
+        process(&config)?;
+
+        let source = config.source.as_mut().unwrap();
+
         if !source.exists {
             if let Some(path) = source.path.parent() {
                 fs::create_dir_all(path).map_err(|e| format!(
@@ -80,13 +90,14 @@ impl Config {
             source.exists = true;
         }
 
-        source.data = result.into_bytes();
         Config::write(&source.path, &source.data)?;
-
-        config.source.replace(source);
         *self = config;
 
         Ok(())
+    }
+
+    pub fn get_tool_path(&self, name: &str, spec: &ToolSpec) -> PathBuf {
+        spec.path.as_ref().unwrap_or(&self.path).join(name)
     }
 
     pub fn update_tool(&mut self, raw: &mut Document, name: &str, spec: &ToolSpec) -> EmptyResult {

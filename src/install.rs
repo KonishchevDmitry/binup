@@ -2,7 +2,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Read};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitCode};
 use std::time::SystemTime;
 
 use easy_logging::GlobalContext;
@@ -10,68 +10,104 @@ use log::{Level, debug, info, warn, error};
 use semver::Version;
 use url::Url;
 
-use crate::config::{Config, Tool};
-use crate::core::EmptyResult;
+use crate::config::Config;
+use crate::core::{EmptyResult, GenericResult};
 use crate::download;
-use crate::github::Github;
+use crate::github::{self, Github};
 use crate::matcher::Matcher;
 use crate::release::{self, Release};
+use crate::tool::ToolSpec;
 use crate::util;
 use crate::version::{self, ReleaseVersion};
 
 #[derive(Clone, Copy)]
 pub enum Mode {
-    Install {force: bool},
+    Install {
+        force: bool,
+        recheck_spec: bool,
+    },
     Upgrade,
 }
 
-pub fn install(config: &Config, mode: Mode, names: Option<Vec<String>>) -> EmptyResult {
-    let tools: Vec<(&String, &Tool)> = match names {
-        Some(ref names) => {
-            let mut selected = Vec::new();
+pub fn install(config: &Config, mode: Mode, names: Vec<String>) -> GenericResult<ExitCode> {
+    let tools: Vec<(&String, &ToolSpec)> = if names.is_empty() {
+        config.tools.iter().collect()
+    } else {
+        let mut selected = Vec::new();
 
-            for name in names {
-                let tool = config.tools.get(name).ok_or_else(|| format!(
-                    "{name:?} tool is not specified in the configuration file"))?;
-                selected.push((name, tool));
-            }
+        for name in &names {
+            let tool = config.tools.get(name).ok_or_else(|| format!(
+                "{name:?} tool is not specified in the configuration file"))?;
+            selected.push((name, tool));
+        }
 
-            selected
-        },
-        None => config.tools.iter().collect(),
+        selected
     };
 
-    for (name, tool) in tools {
+    let github = Github::new(&config.github)?;
+
+    for (name, spec) in tools {
         let _logging_context = GlobalContext::new_conditional(Level::Debug, name);
 
-        if names.is_none() {
+        if names.is_empty() {
             info!("Checking {name}...");
         }
 
-        let path = tool.path.as_ref().unwrap_or(&config.path);
-        install_tool(config, name, tool, mode, path).map_err(|e| format!(
+        let install_path = config.get_tool_path(name, spec);
+        install_tool(name, spec, &github, mode, &install_path).map_err(|e| format!(
             "{name}: {e}"))?;
     }
 
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }
 
-fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: &Path) -> EmptyResult {
-    let install_path = path.join(name);
+pub fn install_spec(config: &mut Config, name: Option<String>, spec: ToolSpec, force: bool) -> GenericResult<ExitCode> {
+    let name = match name {
+        Some(name) => name,
+        None => github::parse_project_name(&spec.project)?.name,
+    };
+
+    let mut update_config = true;
+
+    if let Some(registered) = config.tools.get(&name) {
+        if *registered == spec {
+            update_config = false
+        } else if !force && !util::confirm("The tool is already registered with different configuration. Override it?") {
+            return Ok(ExitCode::FAILURE);
+        }
+    }
+
+    let github = Github::new(&config.github)?;
+    let install_path = config.get_tool_path(&name, &spec);
+    let install_mode = Mode::Install {force, recheck_spec: update_config};
+
+    if update_config {
+        config.edit(
+            |config, raw| config.update_tool(raw, &name, &spec),
+            |_| install_tool(&name, &spec, &github, install_mode, &install_path),
+        )?;
+    } else {
+        install_tool(&name, &spec, &github, install_mode, &install_path)?;
+    }
+
+    Ok(ExitCode::SUCCESS)
+}
+
+fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, install_path: &Path) -> EmptyResult {
     let tool = crate::tool::check(&install_path)?;
 
     match (mode, tool.is_some()) {
-        (Mode::Install{force: false}, true) => {
+        (Mode::Install{force: false, recheck_spec: false}, true) => {
             info!("{name} is already installed.");
             return Ok(());
         },
         (Mode::Upgrade, false) => {
-            mode = Mode::Install{force: false};
+            mode = Mode::Install{force: false, recheck_spec: false};
         }
         _ => {},
     }
 
-    let release = Github::new(&config.github)?.get_release(&spec.project).map_err(|e| format!(
+    let release = github.get_release(&spec.project).map_err(|e| format!(
         "Failed to get latest release info for {}: {e}", spec.project))?;
 
     let release_version = &release.version;
@@ -88,9 +124,9 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
         version::get_binary_version(&install_path));
 
     match mode {
-        Mode::Install {force: _} => if tool.is_none() {
+        Mode::Install {force, recheck_spec: _} => if tool.is_none() {
             info!("Installing {name}...");
-        } else {
+        } else if force {
             match current_version {
                 Some(current_version) => info!(
                     "Reinstalling {name}: {current_version} -> {release_version}{changelog}",
@@ -99,6 +135,9 @@ fn install_tool(config: &Config, name: &str, spec: &Tool, mut mode: Mode, path: 
 
                 None => info!("Reinstalling {name}..."),
             }
+        } else {
+            info!("{name} is already installed.");
+            return Ok(());
         },
 
         Mode::Upgrade => {

@@ -165,6 +165,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
             let mode = match command {
                 "install" => Mode::Install {
                     force: matches.get_flag("force"),
+                    recheck_spec: false,
                 },
                 "upgrade" => Mode::Upgrade,
                 _ => unreachable!(),

@@ -1,4 +1,6 @@
 use std::io::Write;
+use std::path::Path;
+use std::process::ExitCode;
 use std::time::SystemTime;
 
 use ansi_term::Color;
@@ -8,23 +10,24 @@ use tabled::{Table, Tabled};
 use tabled::settings::{Alignment, Disable, Height, object::{Rows, Columns}, style::Style};
 
 use crate::config::Config;
-use crate::core::EmptyResult;
+use crate::core::GenericResult;
 use crate::github::Github;
 use crate::tool::ToolSpec;
 use crate::version::{self, ReleaseVersion};
 
-pub fn list(config: &Config, full: bool) -> EmptyResult {
+pub fn list(config: &Config, full: bool) -> GenericResult<ExitCode> {
     if config.tools.is_empty() {
-        return Ok(());
+        return Ok(ExitCode::SUCCESS);
     }
 
     let mut rows = Vec::new();
     let github = Github::new(&config.github)?;
     let colored = std::io::stdout().is_terminal();
 
-    for (name, tool) in &config.tools {
+    for (name, spec) in &config.tools {
         debug!("Checking {name}...");
-        rows.push(list_tool(config, name, tool, &github, colored));
+        let install_path = config.get_tool_path(name, spec);
+        rows.push(list_tool(name, spec, &github, &install_path, colored));
     }
 
     let mut table = Table::new(&rows);
@@ -39,7 +42,7 @@ pub fn list(config: &Config, full: bool) -> EmptyResult {
     }
 
     let _ = writeln!(std::io::stdout(), "{}", table);
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }
 
 #[derive(Tabled)]
@@ -57,9 +60,7 @@ struct ToolInfo {
     changelog: String,
 }
 
-fn list_tool(config: &Config, name: &str, spec: &ToolSpec, github: &Github, colored: bool) -> ToolInfo {
-    let install_path = spec.path.as_ref().unwrap_or(&config.install_path).join(name);
-
+fn list_tool(name: &str, spec: &ToolSpec, github: &Github, install_path: &Path, colored: bool) -> ToolInfo {
     let tool = crate::tool::check(&install_path).unwrap_or_else(|e| {
         error!("{name}: {e}.");
         None

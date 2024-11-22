@@ -13,18 +13,18 @@ mod tool;
 mod util;
 mod version;
 
+use core::GenericResult;
 use std::io::{self, Write};
 use std::path::Path;
-use std::process;
+use std::process::{self, ExitCode};
 
 use easy_logging::LoggingConfig;
 use log::error;
 
 use crate::cli::Action;
 use crate::config::Config;
-use crate::core::EmptyResult;
 
-fn main() {
+fn main() -> ExitCode {
     let args = cli::parse_args().unwrap_or_else(|e| {
         let _ = writeln!(io::stderr(), "{}.", e);
         process::exit(1);
@@ -35,20 +35,23 @@ fn main() {
         process::exit(1);
     }
 
-    if let Err(err) = run(&args.config_path, args.custom_config, args.action) {
-        let message = err.to_string();
+    match run(&args.config_path, args.custom_config, args.action) {
+        Ok(code) => code,
+        Err(err) => {
+            let message = err.to_string();
 
-        if message.contains('\n') || message.ends_with('.') {
-            error!("{message}");
-        } else {
-            error!("{message}.");
-        }
+            if message.contains('\n') || message.ends_with('.') {
+                error!("{message}");
+            } else {
+                error!("{message}.");
+            }
 
-        process::exit(1);
+            ExitCode::FAILURE
+        },
     }
 }
 
-fn run(config_path: &Path, custom_config: bool, action: Action) -> EmptyResult {
+fn run(config_path: &Path, custom_config: bool, action: Action) -> GenericResult<ExitCode> {
     let mut config = Config::load(config_path, custom_config).map_err(|e| format!(
         "Error while reading {:?} configuration file: {}", config_path, e))?;
 
