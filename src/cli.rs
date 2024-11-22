@@ -18,6 +18,7 @@ pub struct CliArgs {
     pub action: Action,
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Action {
     List {
         full: bool,

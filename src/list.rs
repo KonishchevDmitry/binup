@@ -61,13 +61,13 @@ struct ToolInfo {
 }
 
 fn list_tool(name: &str, spec: &ToolSpec, github: &Github, install_path: &Path, colored: bool) -> ToolInfo {
-    let tool = crate::tool::check(&install_path).unwrap_or_else(|e| {
+    let tool = crate::tool::check(install_path).unwrap_or_else(|e| {
         error!("{name}: {e}.");
         None
     });
 
     let installed_version = tool.as_ref().and_then(|_|
-        version::get_binary_version(&install_path));
+        version::get_binary_version(install_path));
 
     let mut info = ToolInfo {
         name: name.to_owned(),

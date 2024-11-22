@@ -19,7 +19,7 @@ impl Matcher {
         Ok(if let Some(regex) = pattern.strip_prefix('~') {
             Matcher::Regex(Regex::new(regex)?)
         } else {
-            Matcher::Glob(GlobBuilder::new(&pattern)
+            Matcher::Glob(GlobBuilder::new(pattern)
                 .literal_separator(true)
                 .backslash_escape(true)
                 .build()?

@@ -94,7 +94,7 @@ pub fn install_spec(config: &mut Config, name: Option<String>, spec: ToolSpec, f
 }
 
 fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, install_path: &Path) -> EmptyResult {
-    let tool = crate::tool::check(&install_path)?;
+    let tool = crate::tool::check(install_path)?;
 
     match (mode, tool.is_some()) {
         (Mode::Install{force: false, recheck_spec: false}, true) => {
@@ -121,7 +121,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
     let asset = release.select_asset(name, spec.release_matcher.as_ref())?;
     let release_time: SystemTime = asset.time.into();
     let current_version = tool.as_ref().and_then(|_|
-        version::get_binary_version(&install_path));
+        version::get_binary_version(install_path));
 
     match mode {
         Mode::Install {force, recheck_spec: _} => if tool.is_none() {
@@ -164,7 +164,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
         },
     }
 
-    let mut installer = Installer::new(name, &release, spec.binary_matcher.clone(), &install_path, release_time);
+    let mut installer = Installer::new(name, &release, spec.binary_matcher.clone(), install_path, release_time);
 
     download::download(&asset.url, &asset.name, &mut installer).map_err(|e| format!(
         "Failed to download {}: {e}", asset.url))?;
