@@ -6,7 +6,7 @@ Here is how it works. You run `binup install --project KonishchevDmitry/binup` a
 
 All installed tools are registered in `~/.config/binup/config.yaml` which you may edit manually. binup uses [nondestructive](https://github.com/udoprog/nondestructive/) for config editing, so it tries to preserve the configuration file structure and comments.
 
-When a tool is registered in the configuration file, you may install/reinstall/upgrade it by its name: `binup install|upgrade $name`. If tool name is not specified, binup installs/upgrades all the registered tools.
+When tool is registered in the configuration file, you may install/reinstall/upgrade it by name: `binup install|upgrade $name`. If tool name is not specified, binup installs/upgrades all registered tools.
 
 Except for the configuration file, binup is fully stateless: it doesn't save any information about installed binaries. Instead, is always checks the actual state of the apps: if binary is missing, it installs it. When the binary is already installed, it runs it with `--version` argument and tries to parse its actual version to compare with the latest release. If it fails to determine the version (the tool might not have `--version` flag), binup relies on binary file modification time, always setting it to update time of the downloaded release archive.
 
