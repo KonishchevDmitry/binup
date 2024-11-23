@@ -7,7 +7,7 @@ use ansi_term::Color;
 use is_terminal::IsTerminal;
 use log::{debug, error};
 use tabled::{Table, Tabled};
-use tabled::settings::{Alignment, Disable, Height, object::{Rows, Columns}, style::Style};
+use tabled::settings::{Alignment, Height, Remove, object::{Rows, Columns}, style::Style};
 
 use crate::config::Config;
 use crate::core::GenericResult;
@@ -38,7 +38,7 @@ pub fn list(config: &Config, full: bool) -> GenericResult<ExitCode> {
     }
     table.modify(Columns::new(1..=2), Alignment::center());
     if !full {
-        table.with(Disable::column(Columns::single(3)));
+        table.with(Remove::column(Columns::single(3)));
     }
 
     let _ = writeln!(std::io::stdout(), "{}", table);
