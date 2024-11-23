@@ -64,7 +64,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
             .action(ArgAction::Count)
             .help("Set verbosity level"))
 
-        .subcommand(Command::new("list")
+        .subcommand(Command::new("list").visible_alias("l")
             .about("List all configured tools")
             .args([
                 Arg::new("full").short('f').long("full")
@@ -72,7 +72,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                     .action(ArgAction::SetTrue),
             ]))
 
-        .subcommand(Command::new("install")
+        .subcommand(Command::new("install").visible_alias("i")
             .about("Install all or only specified tools")
             .long_about(long_about!("
                 When no arguments is specified, installs all the tools from the configuration file which aren't
@@ -120,14 +120,14 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                     .help("Post-install command"),
             ]))
 
-        .subcommand(Command::new("upgrade")
+        .subcommand(Command::new("upgrade").visible_alias("u")
             .about("Upgrade all or only specified tools")
             .arg(Arg::new("name")
                 .value_name("NAME")
                 .action(ArgAction::Append)
                 .help("Tool name")))
 
-        .subcommand(Command::new("uninstall")
+        .subcommand(Command::new("uninstall").visible_aliases(["remove", "r"])
             .about("Uninstall the specified tools")
             .arg(Arg::new("name")
                 .value_name("NAME")
