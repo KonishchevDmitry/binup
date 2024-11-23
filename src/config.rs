@@ -53,10 +53,10 @@ impl Config {
         Ok(config)
     }
 
-    pub fn edit<E, P>(&mut self, edit: E, process: P) -> EmptyResult
+    pub fn edit<E, P, R>(&mut self, edit: E, process: P) -> GenericResult<R>
         where
             E: FnOnce(&mut Config, &mut Document) -> EmptyResult,
-            P: FnOnce(&Config) -> EmptyResult
+            P: FnOnce(&Config) -> GenericResult<R>
     {
         let error_prefix = "Failed to edit the configuration file: its current format is not supported by the underlaying library.";
 
@@ -78,7 +78,7 @@ impl Config {
 
         source.data = result.into_bytes();
         config.source.replace(source);
-        process(&config)?;
+        let result = process(&config)?;
 
         let source = config.source.as_mut().unwrap();
 
@@ -93,7 +93,7 @@ impl Config {
         Config::write(&source.path, &source.data)?;
         *self = config;
 
-        Ok(())
+        Ok(result)
     }
 
     pub fn get_tool_path(&self, name: &str, spec: &ToolSpec) -> PathBuf {
@@ -115,6 +115,20 @@ impl Config {
 
         spec.serialize(&mut tool)?;
         self.tools.insert(name.to_owned(), spec.clone());
+
+        Ok(())
+    }
+
+    pub fn remove_tool(&mut self, raw: &mut Document, name: &str) -> EmptyResult {
+        let removed = || -> Option<bool> {
+            Some(raw.as_mut().as_mapping_mut()?
+                .get_mut("tools")?.as_mapping_mut()?
+                .remove(name))
+        }().unwrap_or_default();
+
+        if !removed || self.tools.remove(name).is_none() {
+            return Err!("Unable to find the tool in the configuration file")
+        }
 
         Ok(())
     }

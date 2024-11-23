@@ -10,6 +10,7 @@ mod matcher;
 mod project;
 mod release;
 mod tool;
+mod uninstall;
 mod util;
 mod version;
 
@@ -59,5 +60,6 @@ fn run(config_path: &Path, custom_config: bool, action: Action) -> GenericResult
         Action::List {full} => list::list(&config, full),
         Action::Install {mode, names} => install::install(&config, mode, names),
         Action::InstallFromSpec {name, spec, force} => install::install_spec(&mut config, name, spec, force),
+        Action::Uninstall {names} => uninstall::uninstall(&mut config, names),
     }
 }

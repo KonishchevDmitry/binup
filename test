@@ -82,15 +82,19 @@ run() {
     cargo run --quiet -- --config "$config_path" "$@"
 }
 
-ensure_post_install_marker() {
+ensure_exists_rm() {
     rm "$@"
 }
 
-ensure_no_post_install_marker() {
-    if [ -e "$1" ]; then
-        echo "An unexpected call of post-install command ($1 marker)." >&2
-        return 1
-    fi
+ensure_missing() {
+    local path
+
+    for path in "$@"; do
+        if [ -e "$path" ]; then
+            echo "$path exists when not expected to be." >&2
+            return 1
+        fi
+    done
 }
 
 # Test work with missing default config
@@ -100,7 +104,7 @@ cargo run --quiet -- list
 run list
 
 # Should install the tool, but not change the config (fully matches)
-for pass in ensure_post_install_marker ensure_no_post_install_marker; do
+for pass in ensure_exists_rm ensure_missing; do
     run install upgradable --project "$project" \
         --release-matcher "$release_matcher" --binary-matcher "$binary_matcher" --changelog "$changelog" \
         --path "$custom_install_path" --post "$post_command" < /dev/null
@@ -130,11 +134,11 @@ for command in install "install --force" upgrade; do
         if [ "$command" = install ]; then
             shasum "bin/$tool" > checksum
             cmp custom-bin/upgradable old-release-mock
-            ensure_no_post_install_marker "$post_install_marker_path"
+            ensure_missing "$post_install_marker_path"
         else
             shasum -c checksum > /dev/null
             cmp custom-bin/upgradable "bin/$tool"
-            ensure_post_install_marker "$post_install_marker_path"
+            ensure_exists_rm "$post_install_marker_path"
         fi
     )
 done
@@ -142,15 +146,20 @@ done
 # Should update existing entry, but not reinstall
 updated_post_install_marker="$temp_dir/updated-post-install-marker"
 yes | run install --project "$project" --post "touch '$updated_post_install_marker'"
-ensure_no_post_install_marker "$updated_post_install_marker"
+ensure_missing "$updated_post_install_marker"
 
 # Should add a new entry and install
 new_post_install_marker="$temp_dir/new-post-install-marker"
 run install new --project "$project" --post "touch '$new_post_install_marker'"
-ensure_post_install_marker "$new_post_install_marker"
+ensure_exists_rm "$new_post_install_marker"
 
 # Ensure persistence of the changes
-run install --force "$tool" && ensure_post_install_marker "$updated_post_install_marker"
-run install --force new && ensure_post_install_marker "$new_post_install_marker"
+run install --force "$tool" && ensure_exists_rm "$updated_post_install_marker"
+run install --force new && ensure_exists_rm "$new_post_install_marker"
+
+# Uninstall simple and complex configurations
+cmp "$install_path/new" "$custom_install_path/upgradable"
+yes | run uninstall new upgradable
+ensure_missing "$install_path/new" "$custom_install_path/upgradable"
 
 run list --full

@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use clap::parser::ValuesRef;
 use const_format::formatcp;
 use log::Level;
 use url::Url;
@@ -32,6 +31,9 @@ pub enum Action {
         spec: ToolSpec,
         force: bool,
     },
+    Uninstall {
+        names: Vec<String>,
+    }
 }
 
 macro_rules! long_about {
@@ -125,6 +127,14 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                 .action(ArgAction::Append)
                 .help("Tool name")))
 
+        .subcommand(Command::new("uninstall")
+            .about("Uninstall the specified tools")
+            .arg(Arg::new("name")
+                .value_name("NAME")
+                .action(ArgAction::Append)
+                .required(true)
+                .help("Tool name")))
+
         .get_matches();
 
     let log_level = match matches.get_count("verbose") {
@@ -147,16 +157,13 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         },
 
         "install" if matches.contains_id("project") => {
-            let name = matches.get_many("name").map(|mut names: ValuesRef<'_, String>| -> GenericResult<String> {
-                let name = names.next().unwrap().clone();
-                if names.next().is_some() {
-                    return Err!("A single tool name must be specified when project is specified");
-                }
-                Ok(name)
-            }).transpose()?;
+            let names = get_names(matches);
+            if names.len() > 1 {
+                return Err!("A single tool name must be specified when project is specified");
+            }
 
             Action::InstallFromSpec {
-                name,
+                name: names.into_iter().next(),
                 spec: get_tool_spec(matches)?,
                 force: matches.get_flag("force"),
             }
@@ -172,14 +179,29 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                 _ => unreachable!(),
             };
 
-            let names = matches.get_many("name").map(|tools| tools.cloned().collect()).unwrap_or_default();
-            Action::Install {mode, names}
-        }
+            Action::Install {mode, names: get_names(matches)}
+        },
+
+        "uninstall" => Action::Uninstall {names: get_names(matches)},
 
         _ => unreachable!(),
     };
 
     Ok(CliArgs {log_level, config_path, custom_config, action})
+}
+
+fn get_names(matches: &ArgMatches) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+
+    if let Some(args) = matches.get_many("name") {
+        for name in args {
+            if !names.contains(name) {
+                names.push(name.clone());
+            }
+        }
+    }
+
+    names
 }
 
 fn get_tool_spec(matches: &ArgMatches) -> GenericResult<ToolSpec> {
