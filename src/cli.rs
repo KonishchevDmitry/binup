@@ -75,7 +75,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         .subcommand(Command::new("install").visible_alias("i")
             .about("Install all or only specified tools")
             .long_about(long_about!("
-                When no arguments is specified, installs all the tools from the configuration file which aren't
+                When no arguments are specified, installs all the tools from the configuration file which aren't
                 installed yet. When tool name(s) is specified, installs this specific tool(s). When --project is
                 specified, adds a new tool to the configuration file and installs it.
             "))
