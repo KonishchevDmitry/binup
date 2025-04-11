@@ -17,7 +17,7 @@ mod version;
 use core::GenericResult;
 use std::io::{self, Write};
 use std::path::Path;
-use std::process::{self, ExitCode};
+use std::process::ExitCode;
 
 use easy_logging::LoggingConfig;
 use log::error;
@@ -26,14 +26,17 @@ use crate::cli::Action;
 use crate::config::Config;
 
 fn main() -> ExitCode {
-    let args = cli::parse_args().unwrap_or_else(|e| {
-        let _ = writeln!(io::stderr(), "{}.", e);
-        process::exit(1);
-    });
+    let args = match cli::parse_args() {
+        Ok(args) => args,
+        Err(err) => {
+            let _ = writeln!(io::stderr(), "{}.", err);
+            return ExitCode::FAILURE;
+        },
+    };
 
     if let Err(err) = LoggingConfig::new(module_path!(), args.log_level).minimal().build() {
         let _ = writeln!(io::stderr(), "Failed to initialize the logging: {}.", err);
-        process::exit(1);
+        return ExitCode::FAILURE;
     }
 
     match run(&args.config_path, args.custom_config, args.action) {
