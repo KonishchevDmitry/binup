@@ -52,33 +52,18 @@ When --project is specified, adds a new tool to the configuration file and insta
 Usage: binup install [OPTIONS] [NAME]...
 
 Arguments:
-  [NAME]...
-          Tool name
+  [NAME]...  Tool name
 
 Options:
-  -f, --force
-          Force installation even if tool is already installed
-
-  -p, --project <NAME>
-          GitHub project to get the release from
-
-  -c, --changelog <URL>
-          Project changelog URL
-
-  -r, --release-matcher <PATTERN>
-          Release archive pattern
-
-  -b, --binary-matcher <PATTERN>
-          Binary path to look for inside the release archive
-
-  -d, --path <PATH>
-          Path where to install this specific tool to
-
-  -s, --post <COMMAND>
-          Post-install command
-
-  -h, --help
-          Print help (see a summary with '-h')
+  -f, --force                      Force installation even if tool is already installed
+  -p, --project <NAME>             GitHub project to get the release from
+  -c, --changelog <URL>            Project changelog URL
+  -r, --release-matcher <PATTERN>  Release archive pattern
+  -b, --binary-matcher <PATTERN>   Binary path to look for inside the release archive
+  -v, --version-source <SOURCE>    Method which is used to determine current binary version [default: flag] [possible values: flag, command]
+  -d, --path <PATH>                Path where to install this specific tool to
+  -s, --post <COMMAND>             Post-install command
+  -h, --help                       Print help (see more with '--help')
 ```
 
 ### binup upgrade
@@ -92,8 +77,6 @@ Arguments:
 
 Options:
   -h, --help  Print help
-laptop:~/src/binup:master$ cargo run -q -- uninstall --help
-Uninstall the specified tools
 ```
 
 ### binup uninstall
@@ -130,6 +113,13 @@ tools:
 
     # Binary path to look for inside the release archive. If it's not specified, the tool will try to find it automatically.
     binary_matcher: "*/prometheus"
+
+    # Method which is used to determine current binary version:
+    # * flag: `binary --version`
+    # * command: `binary version`
+    #
+    # The default is flag.
+    version_source: flag
 
     # Path where to install this specific tool to
     path: ~/bin

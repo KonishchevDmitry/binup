@@ -2,8 +2,12 @@ use std::fmt::{self, Display, Formatter};
 use std::path::Path;
 use std::process::Command;
 
+use clap::builder::PossibleValue;
 use log::debug;
 use semver::Version;
+use serde::Deserialize;
+use strum::VariantArray;
+use strum_macros::{VariantArray, IntoStaticStr};
 
 use crate::util;
 
@@ -35,9 +39,32 @@ impl Display for ReleaseVersion {
     }
 }
 
-pub fn get_binary_version(path: &Path) -> Option<Version> {
+#[derive(VariantArray, IntoStaticStr, Deserialize, PartialEq, Default, Clone, Copy)]
+#[serde(rename_all="kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum VersionSource {
+    #[default]
+    Flag,   // binary --version
+    Command // binary version
+}
+
+impl clap::ValueEnum for VersionSource {
+    fn value_variants<'a>() -> &'a [Self] {
+        VersionSource::VARIANTS
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        Some(PossibleValue::new(Into::<&str>::into(self)))
+    }
+}
+
+pub fn get_binary_version(path: &Path, method: VersionSource) -> Option<Version> {
     let mut command = Command::new(path);
-    command.arg("--version");
+
+    command.arg(match method {
+        VersionSource::Flag => "--version",
+        VersionSource::Command => "version",
+    });
 
     debug!("Trying to determine {path:?} version by spawning `{command:?}`...");
 
@@ -98,6 +125,10 @@ mod tests {
         case(indoc!(r#"
             vmctl version vmctl-20240425-145537-tags-v1.101.0-0-g5334f0c2c
         "#), "1.101.0"),
+
+        case(indoc!(r#"
+            hugo v0.145.0-666444f0a52132f9fec9f71cf25b441cc6a4f355 darwin/arm64 BuildDate=2025-02-26T15:41:25Z VendorInfo=gohugoio
+        "#), "0.145.0"),
 
         case(indoc!(r#"
             prometheus, version 2.51.2 (branch: HEAD, revision: b4c0ab52c3e9b940ab803581ddae9b3d9a452337)

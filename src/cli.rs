@@ -9,6 +9,7 @@ use crate::core::GenericResult;
 use crate::matcher::Matcher;
 use crate::install::Mode;
 use crate::tool::ToolSpec;
+use crate::version::VersionSource;
 
 pub struct CliArgs {
     pub log_level: Level,
@@ -107,6 +108,12 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                     .value_name("PATTERN")
                     .requires("project")
                     .help("Binary path to look for inside the release archive"),
+
+                Arg::new("version_source").short('v').long("version-source")
+                    .value_name("SOURCE")
+                    .requires("project")
+                    .value_parser(value_parser!(VersionSource))
+                    .help("Method which is used to determine current binary version [default: flag]"),
 
                 Arg::new("path").short('d').long("path")
                     .value_name("PATH")
@@ -219,9 +226,12 @@ fn get_tool_spec(matches: &ArgMatches) -> GenericResult<ToolSpec> {
 
     Ok(ToolSpec {
         project: matches.get_one("project").cloned().unwrap(),
+
         changelog,
         release_matcher,
         binary_matcher,
+        version_source: matches.get_one("version_source").cloned(),
+
         path: matches.get_one("path").cloned(),
         post: matches.get_one("post").cloned(),
     })

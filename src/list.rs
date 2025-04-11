@@ -67,7 +67,7 @@ fn list_tool(name: &str, spec: &ToolSpec, github: &Github, install_path: &Path, 
     });
 
     let installed_version = tool.as_ref().and_then(|_|
-        version::get_binary_version(install_path));
+        version::get_binary_version(install_path, spec.version_source.unwrap_or_default()));
 
     let mut info = ToolInfo {
         name: name.to_owned(),

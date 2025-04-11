@@ -121,7 +121,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
     let asset = release.select_asset(name, spec.release_matcher.as_ref())?;
     let release_time: SystemTime = asset.time.into();
     let current_version = tool.as_ref().and_then(|_|
-        version::get_binary_version(install_path));
+        version::get_binary_version(install_path, spec.version_source.unwrap_or_default()));
 
     match mode {
         Mode::Install {force, recheck_spec: _} => if tool.is_none() {

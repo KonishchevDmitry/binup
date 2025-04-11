@@ -12,6 +12,7 @@ use validator::Validate;
 use crate::core::{EmptyResult, GenericResult};
 use crate::matcher::Matcher;
 use crate::util;
+use crate::version::VersionSource;
 
 #[derive(Deserialize, Validate, PartialEq, Clone)]
 #[serde(deny_unknown_fields)]
@@ -22,6 +23,7 @@ pub struct ToolSpec {
 
     pub release_matcher: Option<Matcher>,
     pub binary_matcher: Option<Matcher>,
+    pub version_source: Option<VersionSource>,
 
     #[serde(default, deserialize_with = "util::deserialize_optional_path")]
     pub path: Option<PathBuf>,
@@ -41,6 +43,9 @@ impl ToolSpec {
         }
         if let Some(ref binary_matcher) = self.binary_matcher {
             map.insert_str("binary_matcher", binary_matcher.to_string());
+        }
+        if let Some(ref version_source) = self.version_source {
+            map.insert_str("version_source", Into::<&str>::into(version_source));
         }
         if let Some(ref path) = self.path {
             let path = path.to_str().ok_or_else(|| format!("Invalid path: {path:?}"))?;
