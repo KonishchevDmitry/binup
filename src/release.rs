@@ -49,7 +49,7 @@ impl Release {
                 _ => {
                     return Err!(
                         "The specified release matcher matches multiple assets:{}",
-                        util::format_list(self.assets.iter().map(|asset| &asset.name)));
+                        util::format_list(assets.iter().map(|asset| &asset.name)));
                 }
             });
         }
