@@ -161,13 +161,13 @@ mod tests {
 
     #[rstest(binary_name, project_name, assets, matches, matcher_index,
         case("binup", "binup", &[
-            "binup-linux-x64-v1.1.0.tar.bz2",
-            "binup-macos-arm64-v1.1.0.tar.bz2",
-            "binup-macos-x64-v1.1.0.tar.bz2",
+            "binup-v1.1.0-linux-x64.tar.bz2",
+            "binup-v1.1.0-macos-arm64.tar.bz2",
+            "binup-v1.1.0-macos-x64.tar.bz2",
         ], &[
-            (OS::Linux, Arch::X86_64, "binup-linux-x64-v1.1.0.tar.bz2"),
-            (OS::MacOS, Arch::X86_64, "binup-macos-x64-v1.1.0.tar.bz2"),
-            (OS::MacOS, Arch::AArch64, "binup-macos-arm64-v1.1.0.tar.bz2"),
+            (OS::Linux, Arch::X86_64, "binup-v1.1.0-linux-x64.tar.bz2"),
+            (OS::MacOS, Arch::X86_64, "binup-v1.1.0-macos-x64.tar.bz2"),
+            (OS::MacOS, Arch::AArch64, "binup-v1.1.0-macos-arm64.tar.bz2"),
         ], 0),
 
         case("dnscrypt-proxy", "dnscrypt-proxy", &[
