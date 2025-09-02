@@ -28,7 +28,7 @@ post_command="touch '$post_install_marker_path' && echo 'Post-install script std
 if [ "$(uname)" = Darwin ]; then
     release_matcher="$tool-*-macos-arm64.*"
 else
-    release_matcher="$tool-*-linux.*"
+    release_matcher="$tool-*-linux-*"
 fi
 
 github_config=""
