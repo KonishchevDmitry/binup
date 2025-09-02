@@ -38,8 +38,9 @@ List all configured tools
 Usage: binup list [OPTIONS]
 
 Options:
-  -f, --full  Show full information including changelog URL
-  -h, --help  Print help
+  -u, --prerelease  Don't filter out prerelease versions
+  -f, --full        Show full information including changelog URL
+  -h, --help        Print help
 ```
 
 ### binup install
@@ -57,6 +58,7 @@ Arguments:
 Options:
   -f, --force                      Force installation even if tool is already installed
   -p, --project <NAME>             GitHub project to get the release from
+  -u, --prerelease                 Allow installation of prerelease version
   -c, --changelog <URL>            Project changelog URL
   -r, --release-matcher <PATTERN>  Release archive pattern
   -b, --binary-matcher <PATTERN>   Binary path to look for inside the release archive
@@ -76,7 +78,8 @@ Arguments:
   [NAME]...  Tool name
 
 Options:
-  -h, --help  Print help
+  -u, --prerelease  Allow upgrade to prerelease version
+  -h, --help        Print help
 ```
 
 ### binup uninstall
@@ -100,6 +103,11 @@ tools:
   prometheus:
     # GitHub project name
     project: prometheus/prometheus
+
+    # Allow installation of prerelease versions (default: false)
+    #
+    # If project has only prerelease versions, they aren't considered as prerelease and will be installed without this option.
+    prerelease: true
 
     # Changelog URL (will be printed on app upgrade)
     changelog: https://github.com/prometheus/prometheus/blob/main/CHANGELOG.md

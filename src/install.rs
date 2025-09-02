@@ -26,7 +26,9 @@ pub enum Mode {
         force: bool,
         recheck_spec: bool,
     },
-    Upgrade,
+    Upgrade {
+        prerelease: bool,
+    },
 }
 
 pub fn install(config: &Config, mode: Mode, names: Vec<String>) -> GenericResult<ExitCode> {
@@ -95,20 +97,26 @@ pub fn install_spec(config: &mut Config, name: Option<String>, spec: ToolSpec, f
 
 fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, install_path: &Path) -> EmptyResult {
     let tool = crate::tool::check(install_path)?;
+    let mut allow_prerelease = spec.prerelease;
 
-    match (mode, tool.is_some()) {
-        (Mode::Install{force: false, recheck_spec: false}, true) => {
-            info!("{name} is already installed.");
-            return Ok(());
+    match mode {
+        Mode::Install {force, recheck_spec} => {
+            if tool.is_some() && !force && !recheck_spec {
+                info!("{name} is already installed.");
+                return Ok(());
+            }
         },
-        (Mode::Upgrade, false) => {
-            mode = Mode::Install{force: false, recheck_spec: false};
+        Mode::Upgrade {prerelease} => {
+            if tool.is_none() {
+                mode = Mode::Install{force: false, recheck_spec: false};
+            }
+            allow_prerelease |= prerelease;
         }
-        _ => {},
     }
 
-    let release = github.get_release(&spec.project).map_err(|e| format!(
-        "Failed to get latest release info for {}: {e}", spec.project))?;
+    let release = github.get_release(&spec.project, allow_prerelease)
+        .map_err(|e| format!("Failed to get latest release info for {}: {e}", spec.project))?
+        .ok_or_else(|| format!("{} has no releases", spec.project))?;
 
     let release_version = &release.version;
     let changelog = spec.changelog.as_ref().unwrap_or(&release.project.changelog);
@@ -140,7 +148,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
             return Ok(());
         },
 
-        Mode::Upgrade => {
+        Mode::Upgrade {prerelease: _} => {
             if match (tool.as_ref(), current_version.as_ref(), &release_version) {
                 (_, Some(current_version), ReleaseVersion::Version(latest_version)) => current_version >= latest_version,
                 (Some(tool), _, _) if tool.modify_time == release_time => true,
@@ -262,10 +270,8 @@ impl Installer {
 
 impl Drop for Installer {
     fn drop(&mut self) {
-        if let Some(temp_path) = self.temp_path.take() {
-            if let Err(err) = fs::remove_file(&temp_path) {
-                error!("Unable to delete {temp_path:?}: {err}.");
-            }
+        if let Some(temp_path) = self.temp_path.take() && let Err(err) = fs::remove_file(&temp_path) {
+            error!("Unable to delete {temp_path:?}: {err}.");
         }
     }
 }

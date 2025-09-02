@@ -15,7 +15,7 @@ use crate::github::Github;
 use crate::tool::ToolSpec;
 use crate::version::{self, ReleaseVersion};
 
-pub fn list(config: &Config, full: bool) -> GenericResult<ExitCode> {
+pub fn list(config: &Config, prerelease: bool, full: bool) -> GenericResult<ExitCode> {
     if config.tools.is_empty() {
         return Ok(ExitCode::SUCCESS);
     }
@@ -26,8 +26,12 @@ pub fn list(config: &Config, full: bool) -> GenericResult<ExitCode> {
 
     for (name, spec) in &config.tools {
         debug!("Checking {name}...");
-        let install_path = config.get_tool_path(name, spec);
-        rows.push(list_tool(name, spec, &github, &install_path, colored));
+
+        let mut spec = spec.clone();
+        spec.prerelease |= prerelease;
+
+        let install_path = config.get_tool_path(name, &spec);
+        rows.push(list_tool(name, &spec, &github, &install_path, colored));
     }
 
     let mut table = Table::new(&rows);
@@ -76,8 +80,9 @@ fn list_tool(name: &str, spec: &ToolSpec, github: &Github, install_path: &Path, 
         changelog: spec.changelog.as_ref().map(ToString::to_string).unwrap_or_default(),
     };
 
-    let release = match github.get_release(&spec.project) {
-        Ok(release) => release,
+    let release = match github.get_release(&spec.project, spec.prerelease) {
+        Ok(Some(release)) => release,
+        Ok(None) => return info,
         Err(err) => {
             error!("{name}: Failed to get latest release info for {}: {err}.", spec.project);
             return info;

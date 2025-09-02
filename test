@@ -26,9 +26,9 @@ post_install_marker_path="$temp_dir/post-install-marker"
 post_command="touch '$post_install_marker_path' && echo 'Post-install script stdout' && echo 'Post-install script stderr' >&2"
 
 if [ "$(uname)" = Darwin ]; then
-    release_matcher="$tool-macos-arm64-*"
+    release_matcher="$tool-*-macos-arm64.*"
 else
-    release_matcher="$tool-linux-*"
+    release_matcher="$tool-*-linux.*"
 fi
 
 github_config=""
@@ -65,6 +65,7 @@ tools:
 
   upgradable:
     project: $project
+    prerelease: true
     changelog: $changelog
     release_matcher: $release_matcher
     binary_matcher: $binary_matcher
@@ -106,7 +107,7 @@ run list
 
 # Should install the tool, but not change the config (fully matches)
 for pass in ensure_exists_rm ensure_missing; do
-    run install upgradable --project "$project" \
+    run install upgradable --project "$project" --prerelease \
         --release-matcher "$release_matcher" --binary-matcher "$binary_matcher" --version-source flag \
         --changelog "$changelog" --path "$custom_install_path" --post "$post_command" < /dev/null
 
@@ -163,4 +164,5 @@ cmp "$install_path/new" "$custom_install_path/upgradable"
 yes | run uninstall new upgradable
 ensure_missing "$install_path/new" "$custom_install_path/upgradable"
 
-run list --full
+run list
+run list --prerelease --full

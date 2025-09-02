@@ -1,10 +1,12 @@
 use std::error::Error as _;
 
+use futures_util::TryStreamExt;
 use http::{StatusCode, header};
 use log::{debug, trace};
 use octocrab::{Octocrab, OctocrabBuilder, Error};
 use octocrab::models::repos::Release as ReleaseModel;
 use serde::Deserialize;
+use tokio::pin;
 use tokio::runtime::Runtime;
 use url::Url;
 
@@ -42,49 +44,67 @@ impl Github {
         Ok(Github {runtime, client})
     }
 
-    pub fn get_release(&self, project: &str) -> GenericResult<Release> {
-        self.runtime.block_on(self.get_release_async(project))
+    pub fn get_release(&self, project: &str, allow_prerelease: bool) -> GenericResult<Option<Release>> {
+        self.runtime.block_on(self.get_release_async(project, allow_prerelease))
     }
 
-    async fn get_release_async(&self, project: &str) -> GenericResult<Release> {
+    async fn get_release_async(&self, project: &str, allow_prerelease: bool) -> GenericResult<Option<Release>> {
         let project = parse_project_name(project)?;
-        let repository = self.client.repos(&project.owner, &project.name);
+        debug!("Getting {} release info (allow prerelease: {allow_prerelease})...", project.full_name());
 
-        debug!("Getting {} release info...", project.full_name());
+        let release = if allow_prerelease {
+            self.get_latest_any_release(&project).await?
+        } else {
+            match self.get_latest_final_release(&project).await? {
+                Some(release) => Some(release),
+                None => self.get_latest_any_release(&project).await?,
+            }
+        };
 
-        let release = repository.releases().get_latest().await
-            .map(Some)
-            .or_else(|err| -> GenericResult<Option<ReleaseModel>> {
-                match err {
-                    Error::GitHub {source, ..} if source.status_code == StatusCode::NOT_FOUND => Ok(None),
-                    _ => Err!("{}", humanize_error(err)),
-                }
-            })?;
-
-        let release = match release {
-            Some(release) => release,
-            None => {
-                repository.get().await.map_err(|err| {
-                    match err {
-                        Error::GitHub {source, ..} if source.status_code == StatusCode::NOT_FOUND => {
-                            "The project doesn't exist".into()
-                        },
-                        _ => humanize_error(err),
-                    }
-                })?;
-                return Err!("The project has no releases");
-            },
+        let Some(release) = release else {
+            debug!("{} has no releases.", project.full_name());
+            return Ok(None);
         };
 
         trace!("The latest {} release:\n{release:#?}", project.full_name());
 
-        Ok(Release::new(project, &release.tag_name, release.assets.into_iter().map(|asset| {
+        Ok(Some(Release::new(project, &release.tag_name, release.assets.into_iter().map(|asset| {
             Asset {
                 name: asset.name,
                 time: asset.updated_at,
                 url: asset.browser_download_url,
             }
-        }).collect()))
+        }).collect())))
+    }
+
+    async fn get_latest_final_release(&self, project: &Project) -> GenericResult<Option<ReleaseModel>> {
+        let repository = self.client.repos(&project.owner, &project.name);
+
+        Ok(match repository.releases().get_latest().await {
+            Ok(release) => Some(release),
+            Err(Error::GitHub {source, ..}) if source.status_code == StatusCode::NOT_FOUND => {
+                repository.get().await.map_err(map_project_error)?;
+                None
+            },
+            Err(err) => return Err!("{}", humanize_error(err))
+        })
+    }
+
+    async fn get_latest_any_release(&self, project: &Project) -> GenericResult<Option<ReleaseModel>> {
+        let repository = self.client.repos(&project.owner, &project.name);
+
+        let releases = repository.releases().list().send().await
+            .map_err(map_project_error)?
+            .into_stream(&self.client);
+        pin!(releases);
+
+        while let Some(release) = releases.try_next().await.map_err(humanize_error)? {
+            if !release.draft {
+                return Ok(Some(release))
+            }
+        }
+
+        Ok(None)
     }
 }
 
@@ -111,6 +131,15 @@ pub fn parse_project_name(full_name: &str) -> GenericResult<Project> {
 fn create_runtime() -> GenericResult<Runtime> {
     Ok(tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e| format!(
         "Failed to create tokio runtime: {e}"))?)
+}
+
+fn map_project_error(err: Error) -> String {
+    match err {
+        Error::GitHub {source, ..} if source.status_code == StatusCode::NOT_FOUND => {
+            "The project doesn't exist".to_owned()
+        },
+        _ => humanize_error(err),
+    }
 }
 
 // octocrab errors are very human-unfriendly

@@ -21,6 +21,7 @@ pub struct CliArgs {
 #[allow(clippy::large_enum_variant)]
 pub enum Action {
     List {
+        prerelease: bool,
         full: bool,
     },
     Install {
@@ -68,9 +69,12 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         .subcommand(Command::new("list").visible_alias("l")
             .about("List all configured tools")
             .args([
+                Arg::new("prerelease").short('u').long("prerelease")
+                    .action(ArgAction::SetTrue)
+                    .help("Don't filter out prerelease versions"),
                 Arg::new("full").short('f').long("full")
-                    .help("Show full information including changelog URL")
-                    .action(ArgAction::SetTrue),
+                    .action(ArgAction::SetTrue)
+                    .help("Show full information including changelog URL"),
             ]))
 
         .subcommand(Command::new("install").visible_alias("i")
@@ -93,6 +97,11 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                 Arg::new("project").short('p').long("project")
                     .value_name("NAME")
                     .help("GitHub project to get the release from"),
+
+                Arg::new("prerelease").short('u').long("prerelease")
+                    .action(ArgAction::SetTrue)
+                    .requires("project")
+                    .help("Allow installation of prerelease version"),
 
                 Arg::new("changelog").short('c').long("changelog")
                     .value_name("URL")
@@ -129,10 +138,15 @@ pub fn parse_args() -> GenericResult<CliArgs> {
 
         .subcommand(Command::new("upgrade").visible_alias("u")
             .about("Upgrade all or only specified tools")
-            .arg(Arg::new("name")
-                .value_name("NAME")
-                .action(ArgAction::Append)
-                .help("Tool name")))
+            .args([
+                Arg::new("name")
+                    .value_name("NAME")
+                    .action(ArgAction::Append)
+                    .help("Tool name"),
+                Arg::new("prerelease").short('u').long("prerelease")
+                    .action(ArgAction::SetTrue)
+                    .help("Allow upgrade to prerelease version"),
+            ]))
 
         .subcommand(Command::new("uninstall").visible_aliases(["remove", "r"])
             .about("Uninstall the specified tools")
@@ -160,6 +174,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
 
     let action = match command {
         "list" => Action::List {
+            prerelease: matches.get_flag("prerelease"),
             full: matches.get_flag("full"),
         },
 
@@ -182,11 +197,16 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                     force: matches.get_flag("force"),
                     recheck_spec: false,
                 },
-                "upgrade" => Mode::Upgrade,
+                "upgrade" => Mode::Upgrade {
+                    prerelease: matches.get_flag("prerelease"),
+                },
                 _ => unreachable!(),
             };
 
-            Action::Install {mode, names: get_names(matches)}
+            Action::Install {
+                mode,
+                names: get_names(matches),
+            }
         },
 
         "uninstall" => Action::Uninstall {names: get_names(matches)},
@@ -226,6 +246,7 @@ fn get_tool_spec(matches: &ArgMatches) -> GenericResult<ToolSpec> {
 
     Ok(ToolSpec {
         project: matches.get_one("project").cloned().unwrap(),
+        prerelease: matches.get_flag("prerelease"),
 
         changelog,
         release_matcher,

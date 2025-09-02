@@ -19,6 +19,8 @@ use crate::version::VersionSource;
 pub struct ToolSpec {
     #[validate(length(min = 1))]
     pub project: String,
+    #[serde(default)]
+    pub prerelease: bool,
     pub changelog: Option<Url>,
 
     pub release_matcher: Option<Matcher>,
@@ -35,6 +37,9 @@ impl ToolSpec {
         map.clear();
         map.insert_str("project", &self.project);
 
+        if self.prerelease {
+            map.insert_bool("prerelease", true);
+        }
         if let Some(ref changelog) = self.changelog {
             map.insert_str("changelog", changelog.as_str());
         }

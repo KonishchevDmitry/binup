@@ -146,10 +146,8 @@ impl Config {
             PathBuf::from(path)
         };
 
-        if let Err(err) = fs::remove_file(&temp_path) {
-            if err.kind() != ErrorKind::NotFound {
-                return Err!("Unable to delete {temp_path:?}: {err}");
-            }
+        if let Err(err) = fs::remove_file(&temp_path) && err.kind() != ErrorKind::NotFound {
+            return Err!("Unable to delete {temp_path:?}: {err}");
         }
 
         let mut open_options = OpenOptions::new();
