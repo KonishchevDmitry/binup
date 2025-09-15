@@ -147,3 +147,33 @@ binup edits the configuration file only in the following cases:
 2. In the `uninstall` command.
 
 If you don't feel comfortable when some app automatically edit your configs, you can register all tools manually and run `binup install|upgrade $name` – when `--project` is not specified, the tool never touches the config.
+
+## Development
+Tested on on Ubuntu 25.04.
+Install compiler
+```
+sudo apt-get install build-essential
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo apt install git curl -y
+$ cargo --version
+cargo 1.89.0 (c24e10642 2025-06-23)
+```
+Build binup
+```
+git clone https://github.com/KonishchevDmitry/binup/
+cd binup/
+cargo build --release
+```
+Run unit tests and integration tests
+```
+cargo test
+```
+Install
+```
+cargo install --path "/usr/local/bin/"
+```
+Check
+```
+$ target/debug/binup --version
+binup 1.7.0
+```
