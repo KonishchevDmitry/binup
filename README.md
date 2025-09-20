@@ -146,34 +146,23 @@ binup edits the configuration file only in the following cases:
 1. When `--project` is specified in the `install` command and the specified parameters don't match already registered ones;
 2. In the `uninstall` command.
 
-If you don't feel comfortable when some app automatically edit your configs, you can register all tools manually and run `binup install|upgrade $name` – when `--project` is not specified, the tool never touches the config.
+If you don't feel comfortable when some app automatically edits your configs, you can register all tools manually and run `binup install|upgrade $name` – when `--project` is not specified, the tool never touches the config.
+
+## Installation
+
+The most simple way to install binup is to download pre-compiled binary from [releases page](https://github.com/KonishchevDmitry/binup/releases).
+
+Or you may build it from sources (you need [Rust](https://rust-lang.org/) to be installed):
+```bash
+cargo build --release && cp target/release/binup ~/.local/bin/
+```
 
 ## Development
-Tested on on Ubuntu 25.04.
-Install compiler
-```
-sudo apt-get install build-essential
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-sudo apt install git curl -y
-$ cargo --version
-cargo 1.89.0 (c24e10642 2025-06-23)
-```
-Build binup
-```
-git clone https://github.com/KonishchevDmitry/binup/
-cd binup/
-cargo build --release
-```
-Run unit tests and integration tests
-```
-cargo test
-```
-Install
-```
-cargo install --path "/usr/local/bin/"
-```
-Check
-```
-$ target/debug/binup --version
-binup 1.7.0
+
+Install Rust – https://www.rust-lang.org/tools/install. Using `rustup` is a recommended way to install and upgrade Rust toolchain, but you also can install your distribution-provided version (but be prepared for the fact that it may turn out to be too old).
+
+```bash
+cargo run # build and run the program
+./check   # run linter
+./test    # run unit and integration tests
 ```
