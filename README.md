@@ -8,7 +8,7 @@ All installed tools are registered in `~/.config/binup/config.yaml` which you ma
 
 When tool is registered in the configuration file, you may install/reinstall/upgrade it by name: `binup install|upgrade $name`. If tool name is not specified, binup installs/upgrades all registered tools.
 
-Except for the configuration file, binup is fully stateless: it doesn't save any information about installed binaries. Instead, is always checks the actual state of the apps: if binary is missing, it installs it. When the binary is already installed, it runs it with `--version` argument and tries to parse its actual version to compare with the latest release. If it fails to determine the version (the tool might not have `--version` flag), binup relies on binary file modification time, always setting it to update time of the downloaded release archive.
+Except for the configuration file, binup is fully stateless: it doesn't save any information about installed binaries. Instead, it always checks the actual state of the apps: if binary is missing, it installs it. When the binary is already installed, it runs it with `--version` argument and tries to parse its actual version to compare with the latest release. If it fails to determine the version (the tool might not have `--version` flag), binup relies on binary file modification time, always setting it to update time of the downloaded release archive.
 
 ## Available commands
 
@@ -143,7 +143,7 @@ github:
 ```
 
 binup edits the configuration file only in the following cases:
-1. When `--project` is specified in the `install` command and the specified parameters doesn't match already registered ones;
+1. When `--project` is specified in the `install` command and the specified parameters don't match already registered ones;
 2. In the `uninstall` command.
 
 If you don't feel comfortable when some app automatically edit your configs, you can register all tools manually and run `binup install|upgrade $name` – when `--project` is not specified, the tool never touches the config.
