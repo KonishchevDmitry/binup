@@ -21,6 +21,7 @@ pub struct CliArgs {
 #[allow(clippy::large_enum_variant)]
 pub enum Action {
     List {
+        local: bool,
         prerelease: bool,
         full: bool,
     },
@@ -69,6 +70,9 @@ pub fn parse_args() -> GenericResult<CliArgs> {
         .subcommand(Command::new("list").visible_alias("l")
             .about("List all configured tools")
             .args([
+                Arg::new("local").short('l').long("local")
+                    .action(ArgAction::SetTrue)
+                    .help("Don't send any network requests and show only locally available information"),
                 Arg::new("prerelease").short('u').long("prerelease")
                     .action(ArgAction::SetTrue)
                     .help("Don't filter out prerelease versions"),
@@ -174,6 +178,7 @@ pub fn parse_args() -> GenericResult<CliArgs> {
 
     let action = match command {
         "list" => Action::List {
+            local: matches.get_flag("local"),
             prerelease: matches.get_flag("prerelease"),
             full: matches.get_flag("full"),
         },

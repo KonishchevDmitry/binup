@@ -165,4 +165,5 @@ yes | run uninstall new upgradable
 ensure_missing "$install_path/new" "$custom_install_path/upgradable"
 
 run list
+run list --local --full
 run list --prerelease --full

@@ -60,7 +60,7 @@ fn run(config_path: &Path, custom_config: bool, action: Action) -> GenericResult
         "Error while reading {:?} configuration file: {}", config_path, e))?;
 
     match action {
-        Action::List {prerelease, full} => list::list(&config, prerelease, full),
+        Action::List {local, prerelease, full} => list::list(&config, local, prerelease, full),
         Action::Install {mode, names} => install::install(&config, mode, names),
         Action::InstallFromSpec {name, spec, force} => install::install_spec(&mut config, name, spec, force),
         Action::Uninstall {names} => uninstall::uninstall(&mut config, names),

@@ -38,6 +38,7 @@ List all configured tools
 Usage: binup list [OPTIONS]
 
 Options:
+  -l, --local       Don't send any network requests and show only locally available information
   -u, --prerelease  Don't filter out prerelease versions
   -f, --full        Show full information including changelog URL
   -h, --help        Print help

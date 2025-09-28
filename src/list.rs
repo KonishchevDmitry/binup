@@ -11,17 +11,17 @@ use tabled::settings::{Alignment, Height, Remove, object::{Rows, Columns}, style
 
 use crate::config::Config;
 use crate::core::GenericResult;
-use crate::github::Github;
+use crate::github::{self, Github};
 use crate::tool::ToolSpec;
 use crate::version::{self, ReleaseVersion};
 
-pub fn list(config: &Config, prerelease: bool, full: bool) -> GenericResult<ExitCode> {
+pub fn list(config: &Config, local: bool, prerelease: bool, full: bool) -> GenericResult<ExitCode> {
     if config.tools.is_empty() {
         return Ok(ExitCode::SUCCESS);
     }
 
     let mut rows = Vec::new();
-    let github = Github::new(&config.github)?;
+    let github = (!local).then(|| Github::new(&config.github)).transpose()?;
     let colored = std::io::stdout().is_terminal();
 
     for (name, spec) in &config.tools {
@@ -31,7 +31,7 @@ pub fn list(config: &Config, prerelease: bool, full: bool) -> GenericResult<Exit
         spec.prerelease |= prerelease;
 
         let install_path = config.get_tool_path(name, &spec);
-        rows.push(list_tool(name, &spec, &github, &install_path, colored));
+        rows.push(list_tool(name, &spec, github.as_ref(), &install_path, colored));
     }
 
     let mut table = Table::new(&rows);
@@ -40,9 +40,12 @@ pub fn list(config: &Config, prerelease: bool, full: bool) -> GenericResult<Exit
     if colored {
         table.modify(Rows::first(), tabled::settings::Color::BOLD);
     }
-    table.modify(Columns::new(1..=2), Alignment::center());
+    table.modify(Columns::new(1..=3), Alignment::center());
     if !full {
-        table.with(Remove::column(Columns::single(3)));
+        table.with(Remove::column(Columns::single(4))); // changelog
+    }
+    if local {
+        table.with(Remove::column(Columns::single(3))); // latest version
     }
 
     let _ = writeln!(std::io::stdout(), "{}", table);
@@ -54,8 +57,11 @@ struct ToolInfo {
     #[tabled(rename = "Name")]
     name: String,
 
-    #[tabled(rename = "Installed")]
-    installed: String,
+    #[tabled(rename = "Status")]
+    status: String,
+
+    #[tabled(rename = "Version")]
+    version: String,
 
     #[tabled(rename = "Latest")]
     latest: String,
@@ -64,20 +70,34 @@ struct ToolInfo {
     changelog: String,
 }
 
-fn list_tool(name: &str, spec: &ToolSpec, github: &Github, install_path: &Path, colored: bool) -> ToolInfo {
-    let tool = crate::tool::check(install_path).unwrap_or_else(|e| {
+fn list_tool(name: &str, spec: &ToolSpec, github: Option<&Github>, install_path: &Path, colored: bool) -> ToolInfo {
+    let (status, tool) = crate::tool::check(install_path).map(|tool| (
+        if tool.is_some() { "installed" } else { "not installed" }, tool
+    )).unwrap_or_else(|e| {
         error!("{name}: {e}.");
-        None
+        ("unknown", None)
     });
 
     let installed_version = tool.as_ref().and_then(|_|
         version::get_binary_version(install_path, spec.version_source.unwrap_or_default()));
 
+    let project = github::parse_project_name(&spec.project).inspect_err(|e| {
+        error!("{name}: {}: {e}.", spec.project);
+    }).ok();
+
     let mut info = ToolInfo {
         name: name.to_owned(),
-        installed: installed_version.as_ref().map(|version| version.to_string()).unwrap_or_default(),
+        status: status.to_owned(),
+        version: installed_version.as_ref().map(|version| version.to_string()).unwrap_or_default(),
         latest: String::new(),
-        changelog: spec.changelog.as_ref().map(ToString::to_string).unwrap_or_default(),
+        changelog: spec.changelog.as_ref()
+            .or_else(|| project.as_ref().map(|project| &project.changelog))
+            .map(ToString::to_string)
+            .unwrap_or_default(),
+    };
+
+    let (Some(github), Some(_project)) = (github, project) else {
+        return info;
     };
 
     let release = match github.get_release(&spec.project, spec.prerelease) {
@@ -88,35 +108,36 @@ fn list_tool(name: &str, spec: &ToolSpec, github: &Github, install_path: &Path, 
             return info;
         }
     };
-
     info.latest = release.version.to_string();
-    if info.changelog.is_empty() {
-        info.changelog = release.project.changelog.to_string();
-    }
 
-    if colored {
-        let release_time: Option<SystemTime> = match release.select_asset(name, spec.release_matcher.as_ref()) {
-            Ok(asset) => Some(asset.time.into()),
-            Err(_) => {
+    let release_time: Option<SystemTime> = match release.select_asset(name, spec.release_matcher.as_ref()) {
+        Ok(asset) => Some(asset.time.into()),
+        Err(_) => {
+            if colored {
                 info.latest = Color::Yellow.paint(info.latest).to_string();
-                None
-            },
+            }
+            None
+        },
+    };
+
+    let up_to_date = if let (Some(current), ReleaseVersion::Version(latest)) = (installed_version, release.version) {
+        Some(current >= latest)
+    } else if let (Some(tool), Some(release_time)) = (tool, release_time) {
+        Some(tool.modify_time >= release_time)
+    } else {
+        None
+    };
+
+    if let Some(up_to_date) = up_to_date {
+        let (status, color) = if up_to_date {
+            ("up to date", Color::Green)
+        } else {
+            ("outdated", Color::Yellow)
         };
 
-        if let (Some(current), ReleaseVersion::Version(latest)) = (installed_version, release.version) {
-            let color = if current >= latest {
-                Color::Green
-            } else {
-                Color::Yellow
-            };
-            info.installed = color.paint(info.installed).to_string();
-        } else if let (Some(tool), Some(release_time)) = (tool, release_time) {
-            let color = if tool.modify_time >= release_time {
-                Color::Green
-            } else {
-                Color::Yellow
-            };
-            info.installed = color.paint(info.installed).to_string();
+        info.status = status.to_owned();
+        if colored {
+            info.status = color.paint(info.status).to_string();
         }
     }
 
