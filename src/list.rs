@@ -40,12 +40,18 @@ pub fn list(config: &Config, local: bool, prerelease: bool, full: bool) -> Gener
     if colored {
         table.modify(Rows::first(), tabled::settings::Color::BOLD);
     }
-    table.modify(Columns::new(1..=3), Alignment::center());
+    table.modify(Columns::new(1..=2), Alignment::center());
+
+    // changelog
     if !full {
-        table.with(Remove::column(Columns::single(4))); // changelog
+        table.with(Remove::column(Columns::one(4)));
     }
+
+    // latest version
     if local {
-        table.with(Remove::column(Columns::single(3))); // latest version
+        table.with(Remove::column(Columns::one(3)));
+    } else {
+        table.modify(Columns::one(3), Alignment::center());
     }
 
     let _ = writeln!(std::io::stdout(), "{}", table);

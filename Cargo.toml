@@ -19,37 +19,37 @@ lto = true
 
 [dependencies]
 ansi_term = "0.12.1"
-bzip2 = "0.5.2"
-chrono = "0.4.40"
-clap = "4.5.37"
-const_format = "0.2.34"
+bzip2 = "0.6.1"
+chrono = "0.4.42"
+clap = "4.5.51"
+const_format = "0.2.35"
 easy-logging = "1"
 flate2 = "1.1"
 futures-util = "0.3.31"
-globset = "0.4.16"
+globset = "0.4.18"
 http = "1.3.1"
-indoc = "2.0.6"
-is-terminal = "0.4.16"
+indoc = "2.0.7"
+is-terminal = "0.4.17"
 itertools = "0.14.0"
-octocrab = { version = "0.44.0", features = ["stream"] }
-libc = "0.2.172"
-log = "0.4.27"
-nondestructive = "0.0.26"
-platforms = "3.5.0"
-regex = "1.11.1"
-reqwest = { version = "0.12.15", features = ["blocking"] }
-semver = "1.0.26"
-serde = "1.0.219"
-serde_derive = "1.0.219"
+octocrab = { version = "0.47.0", features = ["stream"] }
+libc = "0.2.177"
+log = "0.4.28"
+nondestructive = "0.0.28"
+platforms = "3.7.0"
+regex = "1.12.2"
+reqwest = { version = "0.12.24", features = ["blocking"] }
+semver = "1.0.27"
+serde = "1.0.228"
+serde_derive = "1.0.228"
 serde_yaml = "0.9.34"
 shellexpand = "3.1.1"
 strum = "0.27"
 strum_macros = "0.27"
-tabled = { version = "0.19.0", features = ["ansi"] }
+tabled = { version = "0.20.0", features = ["ansi"] }
 tar = "0.4.44"
 textwrap = "0.16.2"
 tokio = "1"
-url = "2.5.4"
+url = "2.5.7"
 validator = { version = "0.20.0", features = ["derive"] }
 xz2 = "0.1.7"
 
@@ -58,5 +58,5 @@ openssl = { version = "0.10", features = ["vendored"] }
 lzma-sys = { version = "0.1", features = ["static"] }
 
 [dev-dependencies]
-indoc = "2.0.6"
-rstest = "0.25.0"
+indoc = "2.0.7"
+rstest = "0.26.1"
