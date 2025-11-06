@@ -11,6 +11,7 @@ use strum_macros::{VariantArray, IntoStaticStr};
 
 use crate::util;
 
+#[cfg_attr(test, derive(Debug))]
 pub enum ReleaseVersion {
     Version(Version),
     Tag(String)
@@ -18,6 +19,10 @@ pub enum ReleaseVersion {
 
 impl ReleaseVersion {
     pub fn new(tag: &str) -> ReleaseVersion {
+        if let Some(revision) = parse_revision(tag) {
+            return ReleaseVersion::Version(revision)
+        }
+
         let mut version = tag;
         if version.starts_with('v') {
             version = &version[1..];
@@ -95,7 +100,18 @@ pub fn get_binary_version(path: &Path, method: VersionSource) -> Option<Version>
     }
 }
 
+// TODO(konishchev): We probably should have our own version type which supports (and distinguishes) both semver and
+// revision versions. Waiting for more real cases here.
+fn parse_revision(string: &str) -> Option<Version> {
+    let revision = string.strip_prefix('r')?.parse::<u64>().ok()?;
+    Some(Version::new(revision, 0, 0))
+}
+
 fn parse_binary_version(stdout: &str) -> Option<Version> {
+    if let Some(revision) = parse_revision(stdout.trim()) {
+        return Some(revision);
+    }
+
     for word in stdout.split('\n').next().unwrap().split(' ') {
         for token in word.split('-') {
             let token = token.strip_prefix('v').unwrap_or(token);
@@ -104,19 +120,38 @@ fn parse_binary_version(stdout: &str) -> Option<Version> {
             }
         }
     }
+
     None
 }
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use indoc::indoc;
     use rstest::rstest;
     use super::*;
+
+    #[rstest(tag, version,
+        case("v1.7.2",  "1.7.2"),
+        case("r38",    "38.0.0"), // https://github.com/gokcehan/lf
+    )]
+    fn release_version_parsing(tag: &str, version: &str) {
+        let expected = Version::parse(version).unwrap();
+        assert_matches!(
+            ReleaseVersion::new(tag),
+            ReleaseVersion::Version(version) if version == expected
+        );
+    }
 
     #[rstest(stdout, version,
         case(indoc!(r#"
             binup 0.3.0
         "#), "0.3.0"),
+
+        // https://github.com/gokcehan/lf
+        case(indoc!(r#"
+            r38
+        "#), "38.0.0"),
 
         case(indoc!(r#"
             victoria-metrics-20240425-145433-tags-v1.101.0-0-g5334f0c2c
@@ -139,7 +174,7 @@ mod tests {
               tags:             netgo,builtinassets,stringlabels
         "#), "2.51.2")
     )]
-    fn parse(stdout: &str, version: &str) {
+    fn binary_version_parsing(stdout: &str, version: &str) {
         let version = Version::parse(version).unwrap();
 
         assert_eq!(stdout, stdout.trim_start());

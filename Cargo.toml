@@ -58,5 +58,6 @@ openssl = { version = "0.10", features = ["vendored"] }
 lzma-sys = { version = "0.1", features = ["static"] }
 
 [dev-dependencies]
+assert_matches = "1.5.0"
 indoc = "2.0.7"
 rstest = "0.26.1"
