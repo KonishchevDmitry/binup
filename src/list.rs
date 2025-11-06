@@ -40,7 +40,9 @@ pub fn list(config: &Config, local: bool, prerelease: bool, full: bool) -> Gener
     if colored {
         table.modify(Rows::first(), tabled::settings::Color::BOLD);
     }
-    table.modify(Columns::new(1..=2), Alignment::center());
+
+    table.modify(Columns::one(1), Alignment::center()); // status
+    table.modify(Columns::one(2), Alignment::right()); // version
 
     // changelog
     if !full {
@@ -51,7 +53,7 @@ pub fn list(config: &Config, local: bool, prerelease: bool, full: bool) -> Gener
     if local {
         table.with(Remove::column(Columns::one(3)));
     } else {
-        table.modify(Columns::one(3), Alignment::center());
+        table.modify(Columns::one(3), Alignment::right());
     }
 
     let _ = writeln!(std::io::stdout(), "{}", table);
