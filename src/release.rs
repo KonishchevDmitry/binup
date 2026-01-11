@@ -3,11 +3,13 @@ use std::env::consts;
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 use platforms::{Arch, OS};
 use regex::{self, Regex};
 use url::Url;
 
 use crate::core::GenericResult;
+use crate::download::COMPRESSION_EXTENSION_REGEX;
 use crate::matcher::Matcher;
 use crate::project::Project;
 use crate::util;
@@ -100,17 +102,37 @@ fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, ar
     let any_fields_regex = format!("(?:{separator_regex}[^/]+)?");
 
     let platform_regex = format!("(?:{os_regex}[-_]{arch_regex}|{arch_regex}[-_]{os_regex})");
-    let basic_regex = format!(
+    let optional_compression_extension_regex = format!(r"(?:{COMPRESSION_EXTENSION_REGEX})?");
+    let archive_regex = format!(
         r"{separator_regex}{platform_regex}{any_fields_regex}\.tar\.[^/.]+$",
     );
 
+    // Prioritized list of matchers
     let mut matchers = Vec::new();
+    let name_regexes = [binary_name, project_name].into_iter().dedup().map(get_name_matcher).collect_vec();
 
-    for name in [binary_name, project_name] {
-        let name_regex = get_name_matcher(name);
-        matchers.push(Regex::new(&format!("^{name_regex}{any_fields_regex}{basic_regex}")).unwrap());
+    for name_regex in &name_regexes {
+        // Archive with strict name and platform spec
+        matchers.push(Regex::new(&format!(
+            r"^{name_regex}{any_fields_regex}{archive_regex}")).unwrap());
+
+        // Binary with strict name and platform spec
+        matchers.push(Regex::new(&format!(
+            r"^{name_regex}{separator_regex}{platform_regex}{optional_compression_extension_regex}$")).unwrap());
     }
-    matchers.push(Regex::new(&basic_regex).unwrap());
+
+    // Archive with strict platform spec and relaxed name spec
+    matchers.push(Regex::new(&archive_regex).unwrap());
+
+    for name_regex in &name_regexes {
+        // Binary with strict name spec and relaxed platform spec (example: a Linux-only tool)
+        matchers.push(Regex::new(&format!(
+            r"^{name_regex}{separator_regex}{arch_regex}{optional_compression_extension_regex}$")).unwrap());
+
+        // Binary with strict name spec and with no platform spec (example: a Linux-only tool for a single architecture)
+        matchers.push(Regex::new(&format!(
+            r"^{name_regex}{optional_compression_extension_regex}$")).unwrap());
+    }
 
     Some(matchers.into_iter().map(Matcher::Regex).collect())
 }
@@ -160,6 +182,7 @@ mod tests {
     }
 
     #[rstest(binary_name, project_name, assets, matches, matcher_index,
+        // https://github.com/KonishchevDmitry/binup
         case("binup", "binup", &[
             "binup-v1.1.0-linux-x64.tar.bz2",
             "binup-v1.1.0-macos-arm64.tar.bz2",
@@ -170,6 +193,7 @@ mod tests {
             (OS::MacOS, Arch::AArch64, "binup-v1.1.0-macos-arm64.tar.bz2"),
         ], 0),
 
+        // https://github.com/DNSCrypt/dnscrypt-proxy
         case("dnscrypt-proxy", "dnscrypt-proxy", &[
             "dnscrypt-proxy-android_arm-2.1.5.zip",
             "dnscrypt-proxy-android_arm-2.1.5.zip.minisig",
@@ -231,6 +255,7 @@ mod tests {
             // (OS::MacOS, Arch::AArch64, "dnscrypt-proxy-macos_arm64-2.1.5.zip"),
         ], 0),
 
+        // https://github.com/martin-helmich/prometheus-nginxlog-exporter
         case("prometheus-nginxlog-exporter", "prometheus-nginxlog-exporter", &[
             "checksums.txt",
             "prometheus-nginxlog-exporter_1.11.0_darwin_amd64.tar.gz",
@@ -247,6 +272,7 @@ mod tests {
             (OS::MacOS, Arch::AArch64, "prometheus-nginxlog-exporter_1.11.0_darwin_arm64.tar.gz"),
         ], 0),
 
+        // https://github.com/prometheus/node_exporter
         case("prometheus-node-exporter", "node_exporter", &[
             "node_exporter-1.8.2.darwin-amd64.tar.gz",
             "node_exporter-1.8.2.darwin-arm64.tar.gz",
@@ -272,8 +298,9 @@ mod tests {
             (OS::Linux, Arch::X86_64, "node_exporter-1.8.2.linux-amd64.tar.gz"),
             (OS::MacOS, Arch::X86_64, "node_exporter-1.8.2.darwin-amd64.tar.gz"),
             (OS::MacOS, Arch::AArch64, "node_exporter-1.8.2.darwin-arm64.tar.gz"),
-        ], 1),
+        ], 2),
 
+        // https://github.com/shadowsocks/shadowsocks-rust
         case("ssservice", "shadowsocks-rust", &[
             "shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz",
             "shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz.sha256",
@@ -310,7 +337,34 @@ mod tests {
             // (OS::Linux, Arch::X86_64, "shadowsocks-v1.20.3.x86_64-unknown-linux-gnu.tar.xz"),
             (OS::MacOS, Arch::X86_64, "shadowsocks-v1.20.3.x86_64-apple-darwin.tar.xz"),
             (OS::MacOS, Arch::AArch64, "shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz"),
-        ], 2),
+        ], 4),
+
+        // https://github.com/tsl0922/ttyd/releases
+        case("ttyd", "ttyd", &[
+            "SHA256SUMS",
+            "ttyd.aarch64",
+            "ttyd.arm",
+            "ttyd.armhf",
+            "ttyd.i686",
+            "ttyd.mips",
+            "ttyd.mips64",
+            "ttyd.mips64el",
+            "ttyd.mipsel",
+            "ttyd.s390x",
+            "ttyd.win32.exe",
+            "ttyd.x86_64",
+        ], &[
+            (OS::Linux, Arch::X86_64, "ttyd.x86_64"),
+            (OS::MacOS, Arch::X86_64, "ttyd.x86_64"),
+            (OS::MacOS, Arch::AArch64, "ttyd.aarch64"),
+        ], 3),
+
+        // https://github.com/KonishchevDmitry/binup/issues/2#issuecomment-3222682495
+        case("rapidgzip", "indexed_bzip2", &["rapidgzip"], &[
+            (OS::Linux, Arch::X86_64, "rapidgzip"),
+            (OS::MacOS, Arch::X86_64, "rapidgzip"),
+            (OS::MacOS, Arch::AArch64, "rapidgzip"),
+        ], 6),
     )]
     fn release_matcher(binary_name: &str, project_name: &str, assets: &[&str], matches: &[(OS, Arch, &str)], matcher_index: usize) {
         for (os, arch, expected) in matches {

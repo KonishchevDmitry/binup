@@ -20,7 +20,7 @@ pub trait Installer {
 }
 
 pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyResult {
-    let (stripped_name, decoder_builder) = get_decoder_builder(name)?;
+    let (stripped_name, decompressor_builder) = get_decompressor_builder(name)?;
     let archive_type = stripped_name.rsplit_once('.').map(|(_, extension)| extension);
 
     let reader_builder: ReaderBuilder = match archive_type.unwrap_or_default() {
@@ -49,20 +49,21 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
         return Err!("The server returned an error: {}", response.status())
     }
 
-    let decoder = decoder_builder(Box::new(response));
+    let decompressor = decompressor_builder(Box::new(response));
     let reader = reader_builder();
 
-    reader.read(decoder, installer)
+    reader.read(decompressor, installer)
 }
 
-type DecoderBuilder = Box<dyn FnOnce(Box<dyn Read>) -> Box<dyn Read>>;
+type DecompressorBuilder = Box<dyn FnOnce(Box<dyn Read>) -> Box<dyn Read>>;
+pub const COMPRESSION_EXTENSION_REGEX: &str = r"\.(?:bz2|gz|lz|lz4|lzma|lzo|xz|z|zst)";
 
-fn get_decoder_builder(name: &str) -> GenericResult<(&str, DecoderBuilder)> {
+fn get_decompressor_builder(name: &str) -> GenericResult<(&str, DecompressorBuilder)> {
     let Some((stripped_name, extension)) = name.rsplit_once('.') else {
         return Ok((name, Box::new(|reader| reader)));
     };
 
-    let builder: DecoderBuilder = match extension {
+    let builder: DecompressorBuilder = match extension {
         "bz2" => Box::new(|reader| Box::new(bzip2::read::BzDecoder::new(reader))),
         "gz" => Box::new(|reader| Box::new(flate2::read::GzDecoder::new(reader))),
         "xz" => Box::new(|reader| Box::new(xz2::read::XzDecoder::new(reader))),
