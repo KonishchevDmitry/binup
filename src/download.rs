@@ -9,8 +9,15 @@ use url::Url;
 use crate::core::EmptyResult;
 use crate::util;
 
+pub enum FileType {
+    #[allow(dead_code)] // FIXME(konishchev): Implement it
+    Single,
+    Archived {mode: u32},
+}
+
 pub trait Installer {
-    fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult;
+    fn has_binary_matcher(&self) -> bool;
+    fn on_file(&mut self, path: &Path, file_type: FileType, data: &mut dyn Read) -> EmptyResult;
 }
 
 pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyResult {
@@ -25,6 +32,7 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
 
     let reader_builder: ReaderBuilder = match stripped_name.rsplit_once('.') {
         Some((_, "tar")) => Box::new(|| Box::new(TarReader::new())),
+        // XXX(konishchev): + installer.has_binary_matcher()
         _ => return Err!("Unsupported file type: {name:?}")
     };
 
@@ -86,8 +94,8 @@ impl ReleaseReader for TarReader {
 
             if matches!(entry_type, EntryType::Regular | EntryType::Continuous) {
                 let path = path.to_path_buf();
-                let mode = header.mode()?;
-                installer.on_file(&path, mode, &mut entry)?;
+                let file_type = FileType::Archived {mode: header.mode()?};
+                installer.on_file(&path, file_type, &mut entry)?;
             }
         }
 

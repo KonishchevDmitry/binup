@@ -12,7 +12,7 @@ use url::Url;
 
 use crate::config::Config;
 use crate::core::{EmptyResult, GenericResult};
-use crate::download;
+use crate::download::{self, FileType};
 use crate::github::{self, Github};
 use crate::matcher::Matcher;
 use crate::release::{self, Release};
@@ -270,38 +270,56 @@ impl Installer {
 
 impl Drop for Installer {
     fn drop(&mut self) {
-        if let Some(temp_path) = self.temp_path.take() && let Err(err) = fs::remove_file(&temp_path) {
+        if let Some(temp_path) = self.temp_path.take()
+            && let Err(err) = fs::remove_file(&temp_path) {
             error!("Unable to delete {temp_path:?}: {err}.");
         }
     }
 }
 
 impl download::Installer for Installer {
-    fn on_file(&mut self, path: &Path, mode: u32, data: &mut dyn Read) -> EmptyResult {
-        let is_executable = mode & 0o100 != 0;
+    fn has_binary_matcher(&self) -> bool {
+        !self.automatic_matcher
+    }
 
-        if is_executable {
-            self.binaries.push(path.to_owned());
-        }
+    fn on_file(&mut self, path: &Path, file_type: FileType, data: &mut dyn Read) -> EmptyResult {
+        let mut check_file_type = false;
 
-        if self.matcher.matches(path) {
-            debug!("{path:?} matches binary matcher.");
+        match file_type {
+            FileType::Single => {
+                assert!(!self.has_binary_matcher()); // It must be checked before release downloading
+                self.binaries.push(path.to_owned());
+                self.matches.push(path.to_owned());
+                check_file_type = true;
+            },
 
-            self.matches.push(path.to_owned());
-            if self.matches.len() > 1 {
-                return Ok(()); // We'll return error later when collect all matches
-            }
+            FileType::Archived {mode} => {
+                let is_executable = mode & 0o100 != 0;
 
-            if !is_executable {
-                return Err!("{path:?} in the archive is not executable");
-            }
-        } else if self.automatic_matcher && is_executable && self.temp_path.is_none() {
-            debug!(concat!(
-                "Got first executable in archive: {:?}. ",
-                "Download it for the case if it's the only one executable in archive.",
-            ), path);
-        } else {
-            return Ok(());
+                if is_executable {
+                    self.binaries.push(path.to_owned());
+                }
+
+                if self.matcher.matches(path) {
+                    debug!("{path:?} matches binary matcher.");
+
+                    self.matches.push(path.to_owned());
+                    if self.matches.len() > 1 {
+                        return Ok(()); // We'll return error later when collect all matches
+                    }
+
+                    if !is_executable {
+                        return Err!("{path:?} in the archive is not executable");
+                    }
+                } else if self.automatic_matcher && is_executable && self.temp_path.is_none() {
+                    debug!(concat!(
+                        "Got first executable in archive: {:?}. ",
+                        "Download it for the case if it's the only one executable in archive.",
+                    ), path);
+                } else {
+                    return Ok(());
+                }
+            },
         }
 
         let temp_path = match self.temp_path.as_ref() {
@@ -328,6 +346,10 @@ impl download::Installer for Installer {
         self.temp_path.replace(temp_path);
 
         io::copy(data, &mut file)?;
+        if check_file_type {
+            // FIXME(konishchev): Implement it
+        }
+
         file.set_modified(self.time)?;
         file.sync_all()?;
 
