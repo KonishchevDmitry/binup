@@ -3,6 +3,7 @@
 mod cli;
 mod config;
 mod download;
+mod file_types;
 mod github;
 mod install;
 mod list;

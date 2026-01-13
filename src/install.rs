@@ -13,6 +13,7 @@ use url::Url;
 use crate::config::Config;
 use crate::core::{EmptyResult, GenericResult};
 use crate::download::{self, FileType};
+use crate::file_types;
 use crate::github::{self, Github};
 use crate::matcher::Matcher;
 use crate::release::{self, Release};
@@ -338,6 +339,7 @@ impl download::Installer for Installer {
         let mut file = OpenOptions::new()
             .create(true)
             .mode(0o755)
+            .read(check_file_type)
             .write(true)
             .truncate(true)
             .custom_flags(libc::O_NOFOLLOW)
@@ -346,13 +348,22 @@ impl download::Installer for Installer {
         self.temp_path.replace(temp_path);
 
         io::copy(data, &mut file)?;
+        file.set_modified(self.time)?;
+
         if check_file_type {
-            // FIXME(konishchev): Implement it
+            let (description, executable) = file_types::is_executable(&mut file).map_err(|e| format!(
+                "Failed to determine {path:?} file type: {e}"))?;
+
+            if !executable {
+                return Err!(
+                    "{} doesn't look like an executable for current operating system and identified as {}",
+                    path.display(), description)
+            }
+
+            debug!("{} is identified as {description}.", path.display());
         }
 
-        file.set_modified(self.time)?;
         file.sync_all()?;
-
         Ok(())
     }
 }

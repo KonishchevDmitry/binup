@@ -36,8 +36,8 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
                 ), name);
             }
 
-            let name = name.to_owned();
-            Box::new(move || Box::new(BinaryReader::new(&name)))
+            let binary_name = stripped_name.to_owned();
+            Box::new(move || Box::new(BinaryReader::new(&binary_name)))
         },
     };
 
