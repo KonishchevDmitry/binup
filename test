@@ -69,6 +69,7 @@ tools:
     changelog: $changelog
     release_matcher: $release_matcher
     binary_matcher: $binary_matcher
+    force_executable: true
     version_source: flag
     path: $custom_install_path
     post: $post_command
@@ -108,8 +109,8 @@ run list
 # Should install the tool, but not change the config (fully matches)
 for pass in ensure_exists_rm ensure_missing; do
     run install upgradable --project "$project" --prerelease \
-        --release-matcher "$release_matcher" --binary-matcher "$binary_matcher" --version-source flag \
-        --changelog "$changelog" --path "$custom_install_path" --post "$post_command" < /dev/null
+        --release-matcher "$release_matcher" --binary-matcher "$binary_matcher" --force-executable \
+        --version-source flag --changelog "$changelog" --path "$custom_install_path" --post "$post_command" < /dev/null
 
     "$custom_install_path/upgradable" --help > /dev/null
     "$pass" "$post_install_marker_path"
@@ -152,7 +153,7 @@ ensure_missing "$updated_post_install_marker"
 
 # Should add a new entry and install
 new_post_install_marker="$temp_dir/new-post-install-marker"
-run install new --project "$project" --version-source command --post "touch '$new_post_install_marker'"
+run install new --project "$project" --force-executable --version-source command --post "touch '$new_post_install_marker'"
 ensure_exists_rm "$new_post_install_marker"
 
 # Ensure persistence of the changes

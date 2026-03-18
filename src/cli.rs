@@ -128,6 +128,11 @@ pub fn parse_args() -> GenericResult<CliArgs> {
                     .value_parser(value_parser!(VersionSource))
                     .help("Method which is used to determine current binary version [default: flag]"),
 
+                Arg::new("force_executable").short('x').long("force-executable")
+                    .action(ArgAction::SetTrue)
+                    .requires("project")
+                    .help("Ignore actual binary permissions and force executable bit"),
+
                 Arg::new("path").short('d').long("path")
                     .value_name("PATH")
                     .requires("project")
@@ -256,6 +261,7 @@ fn get_tool_spec(matches: &ArgMatches) -> GenericResult<ToolSpec> {
         changelog,
         release_matcher,
         binary_matcher,
+        force_executable: matches.get_flag("force_executable"),
         version_source: matches.get_one("version_source").cloned(),
 
         path: matches.get_one("path").cloned(),

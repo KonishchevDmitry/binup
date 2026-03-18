@@ -63,6 +63,7 @@ Options:
   -c, --changelog <URL>            Project changelog URL
   -r, --release-matcher <PATTERN>  Release archive pattern
   -b, --binary-matcher <PATTERN>   Binary path to look for inside the release archive
+  -x, --force-executable           Ignore actual binary permissions and force executable bit
   -v, --version-source <SOURCE>    Method which is used to determine current binary version [default: flag] [possible values: flag, command]
   -d, --path <PATH>                Path where to install this specific tool to
   -s, --post <COMMAND>             Post-install command
@@ -122,6 +123,10 @@ tools:
 
     # Binary path to look for inside the release archive. If it's not specified, the tool will try to find it automatically.
     binary_matcher: "*/prometheus"
+
+    # Some projects lose executable bit on binaries during release preparing. This flag allows to ignore the actual
+    # binary permissions and force executable bit on it.
+    force_executable: false
 
     # Method which is used to determine current binary version:
     # * flag: `binary --version`

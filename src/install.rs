@@ -112,7 +112,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
                 mode = Mode::Install{force: false, recheck_spec: false};
             }
             allow_prerelease |= prerelease;
-        }
+        },
     }
 
     let release = github.get_release(&spec.project, allow_prerelease)
@@ -173,7 +173,8 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
         },
     }
 
-    let mut installer = Installer::new(name, &release, spec.binary_matcher.clone(), install_path, release_time);
+    let mut installer = Installer::new(
+        name, &release, spec.binary_matcher.clone(), spec.force_executable, install_path, release_time);
 
     download::download(&asset.url, &asset.name, &mut installer).map_err(|e| format!(
         "Failed to download {}: {e}", asset.url))?;
@@ -190,6 +191,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
 struct Installer {
     matcher: Matcher,
     automatic_matcher: bool,
+    force_executable: bool,
 
     binaries: Vec<PathBuf>,
     matches: Vec<PathBuf>,
@@ -200,7 +202,9 @@ struct Installer {
 }
 
 impl Installer {
-    fn new(name: &str, release: &Release, matcher: Option<Matcher>, path: &Path, time: SystemTime) -> Installer {
+    fn new(
+        name: &str, release: &Release, matcher: Option<Matcher>, force_executable: bool, path: &Path, time: SystemTime,
+    ) -> Installer {
         let mut automatic_matcher = false;
 
         let matcher = matcher.unwrap_or_else(|| {
@@ -211,6 +215,7 @@ impl Installer {
         Installer {
             matcher,
             automatic_matcher,
+            force_executable,
 
             binaries: Vec::new(),
             matches: Vec::new(),
@@ -295,7 +300,7 @@ impl download::Installer for Installer {
             },
 
             FileType::Archived {mode} => {
-                let is_executable = mode & 0o100 != 0;
+                let is_executable = (mode & 0o100 != 0) || self.force_executable;
 
                 if is_executable {
                     self.binaries.push(path.to_owned());

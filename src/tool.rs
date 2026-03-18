@@ -25,6 +25,8 @@ pub struct ToolSpec {
 
     pub release_matcher: Option<Matcher>,
     pub binary_matcher: Option<Matcher>,
+    #[serde(default)]
+    pub force_executable: bool,
     pub version_source: Option<VersionSource>,
 
     #[serde(default, deserialize_with = "util::deserialize_optional_path")]
@@ -48,6 +50,9 @@ impl ToolSpec {
         }
         if let Some(ref binary_matcher) = self.binary_matcher {
             map.insert_str("binary_matcher", binary_matcher.to_string());
+        }
+        if self.force_executable {
+            map.insert_bool("force_executable", true);
         }
         if let Some(ref version_source) = self.version_source {
             map.insert_str("version_source", Into::<&str>::into(version_source));
