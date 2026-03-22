@@ -11,7 +11,7 @@ use regex::{self, Regex};
 use url::Url;
 
 use crate::core::GenericResult;
-use crate::download::COMPRESSION_EXTENSION_REGEX;
+use crate::download::{ARCHIVE_EXTENSION_REGEX, COMPRESSION_EXTENSION_REGEX};
 use crate::matcher::Matcher;
 use crate::project::Project;
 use crate::util;
@@ -117,9 +117,7 @@ fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, ar
 
     let platform_regex = format!("(?:{os_regex}[-_]{arch_regex}|{arch_regex}[-_]{os_regex})");
     let optional_compression_extension_regex = format!(r"(?:{COMPRESSION_EXTENSION_REGEX})?");
-    let archive_regex = format!(
-        r"{separator_regex}{platform_regex}{any_fields_regex}\.tar\.[^/.]+$",
-    );
+    let archive_regex = format!(r"{separator_regex}{platform_regex}{any_fields_regex}{ARCHIVE_EXTENSION_REGEX}$");
 
     // Prioritized list of matchers
     let mut matchers = Vec::new();
