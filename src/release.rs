@@ -1,9 +1,11 @@
+use std::borrow::Borrow;
 use std::env::consts;
 #[cfg(test)] use std::ops::Deref;
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
+use log::debug;
 use platforms::{Arch, OS};
 use regex::{self, Regex};
 use url::Url;
@@ -64,6 +66,8 @@ impl Release {
                 .filter(|asset| matcher.matches(&asset.name))
                 .collect();
 
+            debug!("Trying automatic release matcher `{matcher}`:{}", format_assets(&assets));
+
             if assets.len() == 1 {
                 return Ok(assets[0]);
             }
@@ -72,7 +76,7 @@ impl Release {
         Err!(concat!(
             "Unable to automatically choose the proper release from the following assets:{}\n\n",
             "Release matcher should be specifed.",
-        ), util::format_list(self.assets.iter().map(|asset| &asset.name)))
+        ), format_assets(&self.assets))
     }
 }
 
@@ -80,6 +84,12 @@ pub struct Asset {
     pub name: String,
     pub time: DateTime<Utc>,
     pub url: Url,
+}
+
+fn format_assets<A: Borrow<Asset>>(assets: &[A]) -> String {
+    util::format_list(assets.iter().map(|asset| {
+        &asset.borrow().name
+    }))
 }
 
 fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, arch: &str) -> Option<Vec<Matcher>> {
