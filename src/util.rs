@@ -1,10 +1,13 @@
+use std::env::{self, consts};
 use std::fmt::Display;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use const_format::formatcp;
 use itertools::Itertools;
 use log::debug;
+use platforms::OS;
 use serde::Deserialize;
 use serde::de::{Deserializer, Error};
 
@@ -70,6 +73,17 @@ pub fn deserialize_optional_path<'de, D>(deserializer: D) -> Result<Option<PathB
 {
     let path: Option<String> = Deserialize::deserialize(deserializer)?;
     path.as_deref().map(parse_path::<D>).transpose()
+}
+
+pub fn temp_dir() -> PathBuf {
+    let mut temp_dir = env::temp_dir();
+
+    // On modern distributives /tmp is a tmpfs mount, so use /var/tmp instead of it
+    if let Ok(os) = OS::from_str(consts::OS) && os == OS::Linux && temp_dir == Path::new("/tmp") {
+        temp_dir = PathBuf::from("/var/tmp");
+    }
+
+    temp_dir
 }
 
 fn parse_path<'de, D>(path: &str) -> Result<PathBuf, D::Error>
