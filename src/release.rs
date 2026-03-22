@@ -66,7 +66,11 @@ impl Release {
                 .filter(|asset| matcher.matches(&asset.name))
                 .collect();
 
-            debug!("Trying automatic release matcher `{matcher}`:{}", format_assets(&assets));
+            if assets.is_empty() {
+                debug!("No assets match `{matcher}` automatic release matcher.");
+            } else {
+                debug!("Matched assets for `{matcher}` automatic release matcher:{}", format_assets(&assets));
+            }
 
             if assets.len() == 1 {
                 return Ok(assets[0]);

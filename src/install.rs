@@ -319,8 +319,8 @@ impl download::Installer for Installer {
                     }
                 } else if self.automatic_matcher && is_executable && self.temp_path.is_none() {
                     debug!(concat!(
-                        "Got first executable in archive: {:?}. ",
-                        "Download it for the case if it's the only one executable in archive.",
+                        "Got a first executable in the archive: {:?}. ",
+                        "Download it for the case if it's the only one executable in the archive.",
                     ), path);
                 } else {
                     return Ok(());
