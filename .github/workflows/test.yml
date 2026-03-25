@@ -15,15 +15,11 @@ env:
 jobs:
   test:
     name: Test on ${{ matrix.os }}
-    # FIXME(konishchev): a temporary workaround
-    #runs-on: ${{ format('{0}-latest', matrix.os) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ format('{0}-latest', matrix.os) }}
 
     strategy:
       matrix:
-        # FIXME(konishchev): a temporary workaround
-        # os: [ubuntu, macos]
-        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
+        os: [ubuntu, macos]
 
     steps:
     - uses: actions/checkout@v4
@@ -40,8 +36,7 @@ jobs:
     - name: Check the binary
       run: .github/check-binary debug
 
-    # FIXME(konishchev): a temporary workaround
-    # - name: Test
-    #   run: ./test
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Test
+      run: ./test
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
