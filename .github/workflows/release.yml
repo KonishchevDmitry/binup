@@ -19,8 +19,11 @@ jobs:
         include:
           # See https://docs.github.com/en/actions/reference/runners/github-hosted-runners for actual runners
 
-          - name: Linux
+          - name: x86-64 Linux
             os: ubuntu-latest
+
+          - name: ARM Linux
+            os: ubuntu-24.04-arm
 
           - name: Intel MacOS
             os: macos-15-intel
