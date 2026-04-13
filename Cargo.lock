@@ -245,6 +245,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rstest",
+ "rustls",
  "semver",
  "serde",
  "serde_derive",
