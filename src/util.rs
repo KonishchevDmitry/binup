@@ -61,13 +61,6 @@ pub fn confirm<S: Display>(message: S) -> bool {
     }
 }
 
-pub fn deserialize_path<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
-    where D: Deserializer<'de>
-{
-    let path: String = Deserialize::deserialize(deserializer)?;
-    parse_path::<D>(&path)
-}
-
 pub fn deserialize_optional_path<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
     where D: Deserializer<'de>
 {
@@ -84,6 +77,12 @@ pub fn temp_dir() -> PathBuf {
     }
 
     temp_dir
+}
+
+pub fn is_root_user() -> bool {
+    unsafe {
+        libc::getuid() == 0
+    }
 }
 
 fn parse_path<'de, D>(path: &str) -> Result<PathBuf, D::Error>

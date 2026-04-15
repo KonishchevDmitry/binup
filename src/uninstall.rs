@@ -16,7 +16,10 @@ pub fn uninstall(config: &mut Config, names: Vec<String>) -> GenericResult<ExitC
 
     for name in &names {
         match config.tools.get(name) {
-            Some(spec) => tools.push((name, config.get_tool_path(name, spec))),
+            Some(spec) => {
+                let install_spec = config.get_tool_install_spec(name, spec);
+                tools.push((name, install_spec.path))
+            },
             None => invalid.push(name),
         }
     }

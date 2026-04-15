@@ -97,7 +97,7 @@ Options:
 
 Here is an example config with all available configuration options:
 ```yaml
-# Path where to install the binaries (the default is ~/.local/bin)
+# Path where to install the binaries (the default is ~/.local/bin for unprivileged users and /usr/local/bin for root user)
 path: /usr/local/bin
 
 tools:

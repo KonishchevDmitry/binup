@@ -8,6 +8,7 @@ mod github;
 mod install;
 mod list;
 mod matcher;
+mod migration;
 mod project;
 mod release;
 mod tool;
@@ -64,6 +65,9 @@ fn run(config_path: &Path, custom_config: bool, action: Action) -> GenericResult
 
     let mut config = Config::load(config_path, custom_config).map_err(|e| format!(
         "Error while reading {:?} configuration file: {}", config_path, e))?;
+
+    // FIXME(konishchev): Drop after some time
+    migration::check_for_legacy_configuration(&config);
 
     match action {
         Action::List {local, prerelease, full} => list::list(&config, local, prerelease, full),

@@ -30,8 +30,8 @@ pub fn list(config: &Config, local: bool, prerelease: bool, full: bool) -> Gener
         let mut spec = spec.clone();
         spec.prerelease |= prerelease;
 
-        let install_path = config.get_tool_path(name, &spec);
-        rows.push(list_tool(name, &spec, github.as_ref(), &install_path, colored));
+        let install_spec = config.get_tool_install_spec(name, &spec);
+        rows.push(list_tool(name, &spec, github.as_ref(), &install_spec.path, colored));
     }
 
     let mut table = Table::new(&rows);

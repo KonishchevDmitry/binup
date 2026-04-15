@@ -10,7 +10,7 @@ use log::{Level, debug, info, warn, error};
 use semver::Version;
 use url::Url;
 
-use crate::config::Config;
+use crate::config::{Config, InstallSpec};
 use crate::core::{EmptyResult, GenericResult};
 use crate::download::{self, FileType};
 use crate::file_types;
@@ -56,8 +56,8 @@ pub fn install(config: &Config, mode: Mode, names: Vec<String>) -> GenericResult
             info!("Checking {name}...");
         }
 
-        let install_path = config.get_tool_path(name, spec);
-        install_tool(name, spec, &github, mode, &install_path).map_err(|e| format!(
+        let install_spec = config.get_tool_install_spec(name, spec);
+        install_tool(name, spec, &github, mode, &install_spec).map_err(|e| format!(
             "{name}: {e}"))?;
     }
 
@@ -81,23 +81,23 @@ pub fn install_spec(config: &mut Config, name: Option<String>, spec: ToolSpec, f
     }
 
     let github = Github::new(&config.github)?;
-    let install_path = config.get_tool_path(&name, &spec);
+    let install_spec = config.get_tool_install_spec(&name, &spec);
     let install_mode = Mode::Install {force, recheck_spec: update_config};
 
     if update_config {
         config.edit(
             |config, raw| config.update_tool(raw, &name, &spec),
-            |_| install_tool(&name, &spec, &github, install_mode, &install_path),
+            |_| install_tool(&name, &spec, &github, install_mode, &install_spec),
         )?;
     } else {
-        install_tool(&name, &spec, &github, install_mode, &install_path)?;
+        install_tool(&name, &spec, &github, install_mode, &install_spec)?;
     }
 
     Ok(ExitCode::SUCCESS)
 }
 
-fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, install_path: &Path) -> EmptyResult {
-    let tool = crate::tool::check(install_path)?;
+fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, install_spec: &InstallSpec) -> EmptyResult {
+    let tool = crate::tool::check(&install_spec.path)?;
     let mut allow_prerelease = spec.prerelease;
 
     match mode {
@@ -130,7 +130,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
     let asset = release.select_asset(name, spec.release_matcher.as_ref())?;
     let release_time: SystemTime = asset.time.into();
     let current_version = tool.as_ref().and_then(|_|
-        version::get_binary_version(install_path, spec.version_source.unwrap_or_default()));
+        version::get_binary_version(&install_spec.path, spec.version_source.unwrap_or_default()));
 
     match mode {
         Mode::Install {force, recheck_spec: _} => if tool.is_none() {
@@ -174,7 +174,7 @@ fn install_tool(name: &str, spec: &ToolSpec, github: &Github, mut mode: Mode, in
     }
 
     let mut installer = Installer::new(
-        name, &release, spec.binary_matcher.clone(), spec.force_executable, install_path, release_time);
+        name, &release, spec.binary_matcher.clone(), spec.force_executable, install_spec, release_time);
 
     download::download(&asset.url, &asset.name, &mut installer).map_err(|e| format!(
         "Failed to download {}: {e}", asset.url))?;
@@ -197,13 +197,13 @@ struct Installer {
     matches: Vec<PathBuf>,
     temp_path: Option<PathBuf>,
 
-    path: PathBuf,
+    spec: InstallSpec,
     time: SystemTime,
 }
 
 impl Installer {
     fn new(
-        name: &str, release: &Release, matcher: Option<Matcher>, force_executable: bool, path: &Path, time: SystemTime,
+        name: &str, release: &Release, matcher: Option<Matcher>, force_executable: bool, spec: &InstallSpec, time: SystemTime,
     ) -> Installer {
         let mut automatic_matcher = false;
 
@@ -221,7 +221,7 @@ impl Installer {
             matches: Vec::new(),
 
             temp_path: None,
-            path: path.to_owned(),
+            spec: spec.clone(),
             time,
         }
     }
@@ -265,10 +265,10 @@ impl Installer {
         let temp_path = self.temp_path.take().expect(
             "An attempt to finish non-successful installation");
 
-        fs::rename(&temp_path, &self.path).map_err(|e| format!(
-            "Unable to rename {temp_path:?} to {:?}: {e}", self.path))?;
+        fs::rename(&temp_path, &self.spec.path).map_err(|e| format!(
+            "Unable to rename {temp_path:?} to {:?}: {e}", self.spec.path))?;
 
-        debug!("The tool is installed as {:?}.", self.path);
+        debug!("The tool is installed as {:?}.", self.spec.path);
 
         Ok(())
     }
@@ -331,11 +331,17 @@ impl download::Installer for Installer {
         let temp_path = match self.temp_path.as_ref() {
             Some(path) => path.to_owned(),
             None => {
-                let file_name = self.path.file_name()
-                    .and_then(|name| name.to_str())
-                    .ok_or_else(|| format!("Got an unexpected install path: {:?}", self.path))?;
+                if self.spec.create_missing_directories && let Some(install_directory) = self.spec.path.parent() {
+                    debug!("Creating {install_directory:?}...");
+                    std::fs::create_dir_all(install_directory).map_err(|e| format!(
+                        "Unable to create {install_directory:?}: {e}"))?;
+                }
 
-                self.path.with_file_name(format!(".{file_name}.{ext}", ext=env!("CARGO_PKG_NAME")))
+                let file_name = self.spec.path.file_name()
+                    .and_then(|name| name.to_str())
+                    .ok_or_else(|| format!("Got an unexpected install path: {:?}", self.spec.path))?;
+
+                self.spec.path.with_file_name(format!(".{file_name}.{ext}", ext=env!("CARGO_PKG_NAME")))
             },
         };
 

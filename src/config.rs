@@ -20,8 +20,8 @@ pub struct Config {
     #[serde(skip)]
     source: Option<ConfigSource>,
 
-    #[serde(rename = "path", default = "default_install_path", deserialize_with = "util::deserialize_path")]
-    pub path: PathBuf,
+    #[serde(default, deserialize_with = "util::deserialize_optional_path")]
+    pub path: Option<PathBuf>,
 
     #[serde(default)]
     #[validate(nested)]
@@ -96,8 +96,19 @@ impl Config {
         Ok(result)
     }
 
-    pub fn get_tool_path(&self, name: &str, spec: &ToolSpec) -> PathBuf {
-        spec.path.as_ref().unwrap_or(&self.path).join(name)
+    pub fn get_tool_install_spec(&self, name: &str, spec: &ToolSpec) -> InstallSpec {
+        let (install_directory, create_missing) = if let Some(path) = spec.path.as_ref().or(self.path.as_ref()) {
+            (path.to_owned(), path == &default_unprivileged_install_path())
+        } else if util::is_root_user() {
+            (default_privileged_install_path(), false)
+        } else {
+            (default_unprivileged_install_path(), true)
+        };
+
+        InstallSpec {
+            path: install_directory.join(name),
+            create_missing_directories: create_missing,
+        }
     }
 
     pub fn update_tool(&mut self, raw: &mut Document, name: &str, spec: &ToolSpec) -> EmptyResult {
@@ -177,10 +188,6 @@ impl Config {
     }
 }
 
-fn default_install_path() -> PathBuf {
-    PathBuf::from(shellexpand::tilde("~/.local/bin").to_string())
-}
-
 #[derive(Clone, PartialEq)]
 struct ConfigSource {
     path: PathBuf,
@@ -212,4 +219,18 @@ impl Read for ConfigReader {
             self.data.extend_from_slice(&buf[..size]);
         })
     }
+}
+
+#[derive(Clone)]
+pub struct InstallSpec {
+    pub path: PathBuf,
+    pub create_missing_directories: bool,
+}
+
+pub fn default_privileged_install_path() -> PathBuf {
+    PathBuf::from("/usr/local/bin")
+}
+
+pub fn default_unprivileged_install_path() -> PathBuf {
+    PathBuf::from(shellexpand::tilde("~/.local/bin").to_string())
 }
