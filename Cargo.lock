@@ -218,7 +218,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "binup"
-version = "1.10.1"
+version = "2.0.0"
 dependencies = [
  "ansi_term",
  "assert_matches",
