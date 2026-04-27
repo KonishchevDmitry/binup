@@ -172,3 +172,5 @@ cargo run # build and run the program
 ./check   # run linter
 ./test    # run unit and integration tests
 ```
+## Analogues
+If you can't find some feature in binup then you can try similar projects. [binup](https://github.com/KonishchevDmitry/binup), [eget](https://github.com/zyedidia/eget), [aqua](https://github.com/aquaproj/aqua), [gah](https://github.com/marverix/gah), [ubi](https://github.com/houseabsolute/ubi), [distillery](https://github.com/ekristen/distillery), [fetchy](https://github.com/ClementNerma/Fetchy), [gogo](https://github.com/fusion/gogo), [gh-release-install](https://github.com/jooola/gh-release-install), [install-release](https://github.com/Rishang/install-release).
