@@ -272,6 +272,7 @@ mod tests {
         );
     }
 
+    #[test_log::test]
     #[rstest(binary_name, project_name, assets, matches, matcher_index,
         // https://github.com/KonishchevDmitry/binup
         case("binup", "binup", &[

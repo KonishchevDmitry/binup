@@ -65,3 +65,4 @@ lzma-sys = { version = "0.1", features = ["static"] }
 assert_matches = "1.5.0"
 indoc = "2.0.7"
 rstest = "0.26.1"
+test-log = "0.2.21"
