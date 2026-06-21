@@ -27,7 +27,7 @@ pub fn is_executable<R: Read + Seek>(mut reader: R) -> GenericResult<(String, bo
 
 fn get_os_specific_executable_types() -> Option<Vec<FileFormat>> {
     Some(match OS::from_str(consts::OS).ok()? {
-        OS::Linux => vec![FileFormat::ExecutableAndLinkableFormat],
+        OS::Linux => vec![FileFormat::ExecutableAndLinkableFormat, FileFormat::Appimage],
         OS::MacOS => vec![FileFormat::MachO],
         _ => return None,
     })

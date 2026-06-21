@@ -17,6 +17,9 @@ edition = "2024"
 codegen-units = 1
 lto = true
 
+[lints.clippy]
+type-complexity = "allow"
+
 [dependencies]
 ansi_term = "0.12.1"
 bzip2 = "0.6.1"
