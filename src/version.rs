@@ -75,15 +75,21 @@ pub fn get_binary_version(path: &Path, method: VersionSource) -> Option<Version>
 
     match command.output() {
         Ok(result) => if result.status.success() {
-            debug!("Got the following output:{}", util::format_multiline(&String::from_utf8_lossy(&result.stdout)));
+            // Some tools (https://github.com/Hsn723/postfix_exporter for example) print version to stderr
+            let (source, output) = if !result.stdout.is_empty() {
+                ("stdout", result.stdout)
+            } else {
+                ("stderr", result.stderr)
+            };
+            debug!("Got the following output ({source}):{}", util::format_multiline(&String::from_utf8_lossy(&output)));
 
-            match String::from_utf8(result.stdout).ok().and_then(|stdout| parse_binary_version(&stdout)) {
+            match String::from_utf8(output).ok().and_then(|output| parse_binary_version(&output)) {
                 Some(version) => {
-                    debug!("Got the following version: {}.", version);
+                    debug!("Got the following version: {version}.");
                     Some(version)
                 },
                 None => {
-                    debug!("Failed to found the version in the program output.");
+                    debug!("Failed to find the version in the program output.");
                     None
                 },
             }
@@ -172,7 +178,7 @@ mod tests {
               go version:       go1.22.2
               platform:         linux/amd64
               tags:             netgo,builtinassets,stringlabels
-        "#), "2.51.2")
+        "#), "2.51.2"),
     )]
     fn binary_version_parsing(stdout: &str, version: &str) {
         let version = Version::parse(version).unwrap();
