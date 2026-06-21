@@ -58,10 +58,9 @@ impl Release {
             });
         }
 
-        if let Some(matchers) = generate_release_matchers(binary_name, &self.project.name, consts::OS, consts::ARCH) {
-            if let Some((_matcher, asset)) = match_assets(&self.assets, &matchers, consts::OS) {
-                return Ok(asset);
-            }
+        if let Some(matchers) = generate_release_matchers(binary_name, &self.project.name, consts::OS, consts::ARCH)
+            && let Some((_matcher, asset)) = match_assets(&self.assets, &matchers, consts::OS) {
+            return Ok(asset);
         }
 
         Err!(concat!(
@@ -139,7 +138,7 @@ fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, ar
 
 fn match_assets<'a>(assets: &'a [Asset], matchers: &[Matcher], os: &str) -> Option<(usize, &'a Asset)> {
     for (index, matcher) in matchers.iter().enumerate() {
-        let mut assets: Vec<_> = assets.into_iter()
+        let mut assets: Vec<_> = assets.iter()
             .filter(|asset| matcher.matches(&asset.name))
             .collect();
 
@@ -147,11 +146,10 @@ fn match_assets<'a>(assets: &'a [Asset], matchers: &[Matcher], os: &str) -> Opti
         // between them. GNU libc looks as a good default here (https://konishchev.ru/posts/glibc-static-linking/).
         //
         // We do it as a separate hack to not overcomplicate matching logic.
-        if assets.len() > 1 && OS::from_str(os) == Ok(OS::Linux) {
-            if let Some(asset) = fold_assets_by_abi(&assets, &["linux-gnu", "linux-musl"]) {
-                assets.truncate(0);
-                assets.push(asset);
-            }
+        if assets.len() > 1 && OS::from_str(os) == Ok(OS::Linux)
+            && let Some(asset) = fold_assets_by_abi(&assets, &["linux-gnu", "linux-musl"]) {
+            assets.truncate(0);
+            assets.push(asset);
         }
 
         if assets.is_empty() {
@@ -173,7 +171,7 @@ fn fold_assets_by_abi<'a>(assets: &[&'a Asset], prioritized_abi: &[&str]) -> Opt
     let abi_regex = {
         let mut abi_regex = format!(r"{SEPARATOR_REGEX}(?<abi>");
 
-        for (index, abi) in prioritized_abi.into_iter().enumerate() {
+        for (index, abi) in prioritized_abi.iter().enumerate() {
             if index != 0 {
                 abi_regex.push('|');
             }
