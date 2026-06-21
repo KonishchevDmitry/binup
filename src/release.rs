@@ -261,10 +261,8 @@ mod tests {
             "dnscrypt-proxy-win64-2.1.5.zip.minisig",
         ], &[
             (OS::Linux, Arch::X86_64, "dnscrypt-proxy-linux_x86_64-2.1.5.tar.gz"),
-
-            // TODO(konishchev): Support zip archives?
-            // (OS::MacOS, Arch::X86_64, "dnscrypt-proxy-macos_x86_64-2.1.5.zip"),
-            // (OS::MacOS, Arch::AArch64, "dnscrypt-proxy-macos_arm64-2.1.5.zip"),
+            (OS::MacOS, Arch::X86_64, "dnscrypt-proxy-macos_x86_64-2.1.5.zip"),
+            (OS::MacOS, Arch::AArch64, "dnscrypt-proxy-macos_arm64-2.1.5.zip"),
         ], 0),
 
         // https://github.com/martin-helmich/prometheus-nginxlog-exporter
