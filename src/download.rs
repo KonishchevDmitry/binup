@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
@@ -50,7 +51,7 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
     debug!("Downloading {url}...");
     let client = ClientBuilder::new().user_agent(util::USER_AGENT).build()?;
 
-    let response = client.get(url.to_owned()).send()?;
+    let response = client.get(url.to_owned()).send().map_err(humanize_reqwest_error)?;
     if !response.status().is_success() {
         return Err!("The server returned an error: {}", response.status())
     }
@@ -59,6 +60,18 @@ pub fn download(url: &Url, name: &str, installer: &mut dyn Installer) -> EmptyRe
     let reader = reader_builder();
 
     reader.read(decompressor, installer)
+}
+
+fn humanize_reqwest_error(err: reqwest::Error) -> String {
+    let err = err.without_url();
+
+    // reqwest/hyper errors hide all details, so extract the underlying error
+    let mut err: &dyn Error = &err;
+    while let Some(source) = err.source() {
+        err = source;
+    }
+
+    err.to_string()
 }
 
 type DecompressorBuilder = Box<dyn FnOnce(Box<dyn Read>) -> Box<dyn Read>>;
