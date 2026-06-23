@@ -1,6 +1,6 @@
 [package]
 name = "binup"
-version = "2.0.0"
+version = "2.1.0"
 description = "Automated app installation from GitHub releases"
 keywords = ["github-releases", "installer", "package-manager", "prebuilt-binaries", "releases"]
 categories = ["command-line-utilities"]
