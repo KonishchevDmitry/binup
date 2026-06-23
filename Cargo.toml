@@ -2,7 +2,7 @@
 name = "binup"
 version = "2.0.0"
 description = "Automated app installation from GitHub releases"
-keywords = ["cli", "github-releases", "installer", "package-manager", "prebuilt-binaries", "releases"]
+keywords = ["github-releases", "installer", "package-manager", "prebuilt-binaries", "releases"]
 categories = ["command-line-utilities"]
 
 authors = ["Dmitry Konishchev <konishchev@gmail.com>"]
