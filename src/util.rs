@@ -7,7 +7,7 @@ use std::str::FromStr;
 use const_format::formatcp;
 use itertools::Itertools;
 use log::debug;
-use platforms::OS;
+use platforms::Os;
 use serde::Deserialize;
 use serde::de::{Deserializer, Error};
 
@@ -72,7 +72,7 @@ pub fn temp_dir() -> PathBuf {
     let mut temp_dir = env::temp_dir();
 
     // On modern distributives /tmp is a tmpfs mount, so use /var/tmp instead of it
-    if let Ok(os) = OS::from_str(consts::OS) && os == OS::Linux && temp_dir == Path::new("/tmp") {
+    if let Ok(os) = Os::from_str(consts::OS) && os == Os::Linux && temp_dir == Path::new("/tmp") {
         temp_dir = PathBuf::from("/var/tmp");
     }
 

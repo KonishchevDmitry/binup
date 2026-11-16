@@ -3,7 +3,7 @@ use std::env::consts;
 use std::str::FromStr;
 
 use file_format::{FileFormat, Kind};
-use platforms::OS;
+use platforms::Os;
 
 use crate::core::GenericResult;
 
@@ -26,9 +26,9 @@ pub fn is_executable<R: Read + Seek>(mut reader: R) -> GenericResult<(String, bo
 }
 
 fn get_os_specific_executable_types() -> Option<Vec<FileFormat>> {
-    Some(match OS::from_str(consts::OS).ok()? {
-        OS::Linux => vec![FileFormat::ExecutableAndLinkableFormat, FileFormat::Appimage],
-        OS::MacOS => vec![FileFormat::MachO],
+    Some(match Os::from_str(consts::OS).ok()? {
+        Os::Linux => vec![FileFormat::ExecutableAndLinkableFormat, FileFormat::Appimage],
+        Os::MacOS => vec![FileFormat::MachO],
         _ => return None,
     })
 }

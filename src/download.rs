@@ -181,7 +181,7 @@ impl ReleaseReader for ZipReader {
 
         for index in 0..archive.len() {
             let mut file = archive.by_index(index)?;
-            let path = PathBuf::from(file.name());
+            let path = PathBuf::from(file.name()?.as_ref());
 
             if index == 0 {
                 debug!("Processing the archive:")

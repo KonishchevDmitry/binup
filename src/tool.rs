@@ -37,32 +37,32 @@ pub struct ToolSpec {
 impl ToolSpec {
     pub fn serialize(&self, map: &mut MappingMut) -> EmptyResult {
         map.clear();
-        map.insert_str("project", &self.project);
+        map.insert_string("project", &self.project);
 
         if self.prerelease {
             map.insert_bool("prerelease", true);
         }
         if let Some(ref changelog) = self.changelog {
-            map.insert_str("changelog", changelog.as_str());
+            map.insert_string("changelog", changelog.as_str());
         }
         if let Some(ref release_matcher) = self.release_matcher {
-            map.insert_str("release_matcher", release_matcher.to_string());
+            map.insert_string("release_matcher", release_matcher.to_string());
         }
         if let Some(ref binary_matcher) = self.binary_matcher {
-            map.insert_str("binary_matcher", binary_matcher.to_string());
+            map.insert_string("binary_matcher", binary_matcher.to_string());
         }
         if self.force_executable {
             map.insert_bool("force_executable", true);
         }
         if let Some(ref version_source) = self.version_source {
-            map.insert_str("version_source", Into::<&str>::into(version_source));
+            map.insert_string("version_source", Into::<&str>::into(version_source));
         }
         if let Some(ref path) = self.path {
             let path = path.to_str().ok_or_else(|| format!("Invalid path: {path:?}"))?;
-            map.insert_str("path", path);
+            map.insert_string("path", path);
         }
         if let Some(ref post) = self.post {
-            map.insert_str("post", post);
+            map.insert_string("post", post);
         }
 
         Ok(())

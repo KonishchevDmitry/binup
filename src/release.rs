@@ -6,7 +6,7 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use log::debug;
-use platforms::{Arch, OS};
+use platforms::{Arch, Os};
 use regex::{self, Regex, RegexBuilder};
 use url::Url;
 
@@ -85,13 +85,13 @@ fn format_assets<A: Borrow<Asset>>(assets: &[A]) -> String {
 const SEPARATOR_REGEX: &str = "[-._]";
 
 fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, arch: &str) -> Option<Vec<Matcher>> {
-    let os = OS::from_str(os).ok()?;
+    let os = Os::from_str(os).ok()?;
     let arch = Arch::from_str(arch).ok()?;
 
     // vendor + os
     let os_regex = match os {
-        OS::Linux => "(?:unknown-)?linux",
-        OS::MacOS => "(?:apple-)?(?:darwin|macos)",
+        Os::Linux => "(?:unknown-)?linux",
+        Os::MacOS => "(?:apple-)?(?:darwin|macos)",
         _ => return None,
     };
 
@@ -119,7 +119,7 @@ fn generate_release_matchers(binary_name: &str, project_name: &str, os: &str, ar
             .build().unwrap()
     );
 
-    if os == OS::Linux {
+    if os == Os::Linux {
         // We should always prefer AppImage: if it exists, its very likely that even if there are more specific
         // archives, they aren't supported by binup because contain a lot of files required for the binary.
 
@@ -170,9 +170,9 @@ fn match_assets<'a>(assets: &'a [Asset], matchers: &[Matcher], os: &str) -> Opti
         // between them. GNU libc looks as a good default here (https://konishchev.ru/posts/glibc-static-linking/).
         //
         // We do it as a separate hack to not overcomplicate matching logic.
-        if assets.len() > 1 && OS::from_str(os) == Ok(OS::Linux)
+        if assets.len() > 1 && Os::from_str(os) == Ok(Os::Linux)
             && let Some(asset) = fold_assets_by_abi(&assets, &["linux-gnu", "linux-musl"]) {
-            assets.truncate(0);
+            assets.clear();
             assets.push(asset);
         }
 
@@ -302,10 +302,10 @@ mod tests {
             "binup-v1.1.0-macos-arm64.tar.bz2",
             "binup-v1.1.0-macos-x64.tar.bz2",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("binup-v2.0.0-linux-arm64.tar.bz2", 4))),
-            (OS::Linux, Arch::X86_64, Some(("binup-v1.1.0-linux-x64.tar.bz2", 4))),
-            (OS::MacOS, Arch::AArch64, Some(("binup-v1.1.0-macos-arm64.tar.bz2", 0))),
-            (OS::MacOS, Arch::X86_64, Some(("binup-v1.1.0-macos-x64.tar.bz2", 0))),
+            (Os::Linux, Arch::AArch64, Some(("binup-v2.0.0-linux-arm64.tar.bz2", 4))),
+            (Os::Linux, Arch::X86_64, Some(("binup-v1.1.0-linux-x64.tar.bz2", 4))),
+            (Os::MacOS, Arch::AArch64, Some(("binup-v1.1.0-macos-arm64.tar.bz2", 0))),
+            (Os::MacOS, Arch::X86_64, Some(("binup-v1.1.0-macos-x64.tar.bz2", 0))),
         ]),
 
         // https://github.com/DNSCrypt/dnscrypt-proxy
@@ -363,10 +363,10 @@ mod tests {
             "dnscrypt-proxy-win64-2.1.5.zip",
             "dnscrypt-proxy-win64-2.1.5.zip.minisig",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("dnscrypt-proxy-linux_arm64-2.1.5.tar.gz", 4))),
-            (OS::Linux, Arch::X86_64, Some(("dnscrypt-proxy-linux_x86_64-2.1.5.tar.gz", 4))),
-            (OS::MacOS, Arch::AArch64, Some(("dnscrypt-proxy-macos_arm64-2.1.5.zip", 0))),
-            (OS::MacOS, Arch::X86_64, Some(("dnscrypt-proxy-macos_x86_64-2.1.5.zip", 0))),
+            (Os::Linux, Arch::AArch64, Some(("dnscrypt-proxy-linux_arm64-2.1.5.tar.gz", 4))),
+            (Os::Linux, Arch::X86_64, Some(("dnscrypt-proxy-linux_x86_64-2.1.5.tar.gz", 4))),
+            (Os::MacOS, Arch::AArch64, Some(("dnscrypt-proxy-macos_arm64-2.1.5.zip", 0))),
+            (Os::MacOS, Arch::X86_64, Some(("dnscrypt-proxy-macos_x86_64-2.1.5.zip", 0))),
         ]),
 
         // https://github.com/FreeCAD/FreeCAD
@@ -388,10 +388,10 @@ mod tests {
             "freecad_source_1.1.1.tar.gz",
             "freecad_source_1.1.1.tar.gz-SHA256.txt",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("FreeCAD_1.1.1-Linux-aarch64-py311.AppImage", 0))),
-            (OS::Linux, Arch::X86_64, Some(("FreeCAD_1.1.1-Linux-x86_64-py311.AppImage", 0))),
-            (OS::MacOS, Arch::AArch64, None),
-            (OS::MacOS, Arch::X86_64, None),
+            (Os::Linux, Arch::AArch64, Some(("FreeCAD_1.1.1-Linux-aarch64-py311.AppImage", 0))),
+            (Os::Linux, Arch::X86_64, Some(("FreeCAD_1.1.1-Linux-x86_64-py311.AppImage", 0))),
+            (Os::MacOS, Arch::AArch64, None),
+            (Os::MacOS, Arch::X86_64, None),
         ]),
 
         // https://github.com/neovim/neovim
@@ -409,10 +409,10 @@ mod tests {
             "nvim-win64.msi",
             "nvim-win64.zip",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("nvim-linux-arm64.appimage", 0))),
-            (OS::Linux, Arch::X86_64, Some(("nvim-linux-x86_64.appimage", 0))),
-            (OS::MacOS, Arch::AArch64, Some(("nvim-macos-arm64.tar.gz", 0))),
-            (OS::MacOS, Arch::X86_64, Some(("nvim-macos-x86_64.tar.gz", 0))),
+            (Os::Linux, Arch::AArch64, Some(("nvim-linux-arm64.appimage", 0))),
+            (Os::Linux, Arch::X86_64, Some(("nvim-linux-x86_64.appimage", 0))),
+            (Os::MacOS, Arch::AArch64, Some(("nvim-macos-arm64.tar.gz", 0))),
+            (Os::MacOS, Arch::X86_64, Some(("nvim-macos-x86_64.tar.gz", 0))),
         ]),
         case("neovim", "neovim", &[
             "nvim-linux-arm64.appimage",
@@ -428,10 +428,10 @@ mod tests {
             "nvim-win64.msi",
             "nvim-win64.zip",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("nvim-linux-arm64.appimage", 2))),
-            (OS::Linux, Arch::X86_64, Some(("nvim-linux-x86_64.appimage", 2))),
-            (OS::MacOS, Arch::AArch64, Some(("nvim-macos-arm64.tar.gz", 2))),
-            (OS::MacOS, Arch::X86_64, Some(("nvim-macos-x86_64.tar.gz", 2))),
+            (Os::Linux, Arch::AArch64, Some(("nvim-linux-arm64.appimage", 2))),
+            (Os::Linux, Arch::X86_64, Some(("nvim-linux-x86_64.appimage", 2))),
+            (Os::MacOS, Arch::AArch64, Some(("nvim-macos-arm64.tar.gz", 2))),
+            (Os::MacOS, Arch::X86_64, Some(("nvim-macos-x86_64.tar.gz", 2))),
         ]),
 
         // https://github.com/martin-helmich/prometheus-nginxlog-exporter
@@ -446,10 +446,10 @@ mod tests {
             "prometheus-nginxlog-exporter_1.11.0_linux_arm64.rpm",
             "prometheus-nginxlog-exporter_1.11.0_linux_arm64.tar.gz",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("prometheus-nginxlog-exporter_1.11.0_linux_arm64.tar.gz", 4))),
-            (OS::Linux, Arch::X86_64, Some(("prometheus-nginxlog-exporter_1.11.0_linux_amd64.tar.gz", 4))),
-            (OS::MacOS, Arch::AArch64, Some(("prometheus-nginxlog-exporter_1.11.0_darwin_arm64.tar.gz", 0))),
-            (OS::MacOS, Arch::X86_64, Some(("prometheus-nginxlog-exporter_1.11.0_darwin_amd64.tar.gz", 0))),
+            (Os::Linux, Arch::AArch64, Some(("prometheus-nginxlog-exporter_1.11.0_linux_arm64.tar.gz", 4))),
+            (Os::Linux, Arch::X86_64, Some(("prometheus-nginxlog-exporter_1.11.0_linux_amd64.tar.gz", 4))),
+            (Os::MacOS, Arch::AArch64, Some(("prometheus-nginxlog-exporter_1.11.0_darwin_arm64.tar.gz", 0))),
+            (Os::MacOS, Arch::X86_64, Some(("prometheus-nginxlog-exporter_1.11.0_darwin_amd64.tar.gz", 0))),
         ]),
 
         // https://github.com/prometheus/node_exporter
@@ -475,10 +475,10 @@ mod tests {
             "node_exporter-1.8.2.openbsd-amd64.tar.gz",
             "sha256sums.txt",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("node_exporter-1.8.2.linux-arm64.tar.gz", 8))),
-            (OS::Linux, Arch::X86_64, Some(("node_exporter-1.8.2.linux-amd64.tar.gz", 8))),
-            (OS::MacOS, Arch::AArch64, Some(("node_exporter-1.8.2.darwin-arm64.tar.gz", 2))),
-            (OS::MacOS, Arch::X86_64, Some(("node_exporter-1.8.2.darwin-amd64.tar.gz", 2))),
+            (Os::Linux, Arch::AArch64, Some(("node_exporter-1.8.2.linux-arm64.tar.gz", 8))),
+            (Os::Linux, Arch::X86_64, Some(("node_exporter-1.8.2.linux-amd64.tar.gz", 8))),
+            (Os::MacOS, Arch::AArch64, Some(("node_exporter-1.8.2.darwin-arm64.tar.gz", 2))),
+            (Os::MacOS, Arch::X86_64, Some(("node_exporter-1.8.2.darwin-amd64.tar.gz", 2))),
         ]),
 
         // https://github.com/shadowsocks/shadowsocks-rust
@@ -514,10 +514,10 @@ mod tests {
             "shadowsocks-v1.20.3.x86_64-unknown-linux-musl.tar.xz",
             "shadowsocks-v1.20.3.x86_64-unknown-linux-musl.tar.xz.sha256",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("shadowsocks-v1.20.3.aarch64-unknown-linux-gnu.tar.xz", 10))),
-            (OS::Linux, Arch::X86_64, Some(("shadowsocks-v1.20.3.x86_64-unknown-linux-gnu.tar.xz", 10))),
-            (OS::MacOS, Arch::AArch64, Some(("shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz", 4))),
-            (OS::MacOS, Arch::X86_64, Some(("shadowsocks-v1.20.3.x86_64-apple-darwin.tar.xz", 4))),
+            (Os::Linux, Arch::AArch64, Some(("shadowsocks-v1.20.3.aarch64-unknown-linux-gnu.tar.xz", 10))),
+            (Os::Linux, Arch::X86_64, Some(("shadowsocks-v1.20.3.x86_64-unknown-linux-gnu.tar.xz", 10))),
+            (Os::MacOS, Arch::AArch64, Some(("shadowsocks-v1.20.3.aarch64-apple-darwin.tar.xz", 4))),
+            (Os::MacOS, Arch::X86_64, Some(("shadowsocks-v1.20.3.x86_64-apple-darwin.tar.xz", 4))),
         ]),
 
         // https://github.com/telemt/telemt
@@ -536,10 +536,10 @@ mod tests {
             "telemt-x86_64-v3-linux-musl.tar.gz",
             "telemt-x86_64-v3-linux-musl.tar.gz.sha256",
         ], &[
-            (OS::Linux, Arch::AArch64, Some(("telemt-aarch64-linux-gnu.tar.gz", 4))),
-            (OS::Linux, Arch::X86_64, Some(("telemt-x86_64-linux-gnu.tar.gz", 4))),
+            (Os::Linux, Arch::AArch64, Some(("telemt-aarch64-linux-gnu.tar.gz", 4))),
+            (Os::Linux, Arch::X86_64, Some(("telemt-x86_64-linux-gnu.tar.gz", 4))),
             // We don't want this decision actually, but it's an artifact of current release matcher
-            (OS::MacOS, Arch::AArch64, Some(("telemt", 4))),
+            (Os::MacOS, Arch::AArch64, Some(("telemt", 4))),
         ]),
 
         // https://github.com/tsl0922/ttyd/releases
@@ -558,20 +558,20 @@ mod tests {
             "ttyd.x86_64",
         ], &[
             // There is no OS in the assets, so we match it to any OS, assuming that it's available for user's platform only
-            (OS::Linux, Arch::AArch64, Some(("ttyd.aarch64", 7))),
-            (OS::Linux, Arch::X86_64, Some(("ttyd.x86_64", 7))),
-            (OS::MacOS, Arch::AArch64, Some(("ttyd.aarch64", 3))),
-            (OS::MacOS, Arch::X86_64, Some(("ttyd.x86_64", 3))),
+            (Os::Linux, Arch::AArch64, Some(("ttyd.aarch64", 7))),
+            (Os::Linux, Arch::X86_64, Some(("ttyd.x86_64", 7))),
+            (Os::MacOS, Arch::AArch64, Some(("ttyd.aarch64", 3))),
+            (Os::MacOS, Arch::X86_64, Some(("ttyd.x86_64", 3))),
         ]),
 
         // // https://github.com/KonishchevDmitry/binup/issues/2#issuecomment-3222682495
         case("rapidgzip", "indexed_bzip2", &["rapidgzip"], &[
-            (OS::Linux, Arch::X86_64, Some(("rapidgzip", 12))),
-            (OS::MacOS, Arch::X86_64, Some(("rapidgzip", 6))),
-            (OS::MacOS, Arch::AArch64, Some(("rapidgzip", 6))),
+            (Os::Linux, Arch::X86_64, Some(("rapidgzip", 12))),
+            (Os::MacOS, Arch::X86_64, Some(("rapidgzip", 6))),
+            (Os::MacOS, Arch::AArch64, Some(("rapidgzip", 6))),
         ]),
     )]
-    fn release_matcher(binary_name: &str, project_name: &str, assets: &[&str], matches: &[(OS, Arch, Option<(&str, usize)>)]) {
+    fn release_matcher(binary_name: &str, project_name: &str, assets: &[&str], matches: &[(Os, Arch, Option<(&str, usize)>)]) {
         for (os, arch, expected) in matches {
             for ignore_case_test in [false, true] {
                 let expected = expected.map(|(name, index)| {
